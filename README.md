@@ -65,3 +65,43 @@ A simple yet functional mobile application developed as a group project for coll
 ⠀⠀⠀⠹⡄⠙⢮⣧⠀⠈⢿⣿⣿⣿⣿⣷⣦⣤⣶⣾⣿⣿⣿⠟⠉⠀⣠⠇⢀⡾⢿⣿⣿⣿⣿⣰⠁⢣⠀⠀⢧⢰⠀⡼⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠱⠀⠀⠙⣧⡀⠈⣿⡏⣿⣿⣿⡿⢿⣿⡇⠈⠉⢀⡤⠒⠉⡹⢠⠞⠀⠀⠙⢿⣿⣿⡇⠀⠈⡆⠀⠘⣿⣷⠃⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⢦⠀⠀⠘⣷⡄⢹⠃⠘⠃⢻⠇⠈⣿⠇⢠⠔⠁⠀⠀⣠⣧⠏⠀⠀⠀⠀⠀⠙⣿⡇⠀⠀⢸⡀⠀⢘⡏⠀⠀⠀⠀⠀⠀
+
+
+
+
+
+###Structure
+
+
+
+project_my_college/
+└── app/
+    ├── manifests/
+    └── kotlin+java/
+        └── com.example.project_my_college/
+            ├── activities/
+            │   ├── EditorActivity.kt
+            │   ├── FileManagerActivity.kt
+            │   └── LoginActivity.kt
+            ├── database/
+            │   ├── DatabaseHelper.kt
+            │   ├── NoteDao.kt
+            │   └── UserDao.kt
+            ├── models/
+            │   ├── Note.kt
+            │   └── User.kt
+            ├── ui.theme
+            │   └── │ 
+            │       ├── Color.kt
+            │       ├── Theme.kt
+            │       └── Type.kt
+            ├── utils/
+            │   └── FileHelper.kt
+            ├── MainActivity.kt
+            ├── androidTest/
+            │   └── com.example.project_my_college/
+            │       └── ExampleInstrumentedTest.kt
+            └── test/
+                └── com.example.project_my_college/
+                    └── ExampleUnitTest.kt
+
