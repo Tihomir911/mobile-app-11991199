@@ -1,24 +1,55 @@
 package com.example.project_my_college.utils
 
+
 import android.content.Context
 import java.io.File
 
 
+//удалить
+//переименовать
+//выбрать файл
+// размер файла
+// формат файла
 object FileHelper {
     //прочиать содержимое файла
-    fun ReadFile ( context: Context , filename : String): String {
+    fun readFile ( context: Context , filename : String): String {
         val file = File(context.filesDir, filename)
-        return "" //временная заглушка
+        return try {
+            file.readText()
+        }
+        catch (e: Exception){
+            ""
+        }  // сделать так же для файла который не найден в идеале
+
+
     }
     //запись в файл
-    fun WriteFile (context : Context , filename: String , textfile:String ) {}
+    fun writeFile (context : Context , filename: String , text : String) {
+        val file = File(context.filesDir , filename )
+        file.writeText(text)
+
+    }
 
     //создать файл
-    fun CreateFile (context : Context , filename : String) {}
+    fun createFile (context : Context , filename : String) {
+        val file = File(context.filesDir , filename)
+        try{
+            file.createNewFile()
+        }
+        catch(e : Exception){
+        }
+    }
 
     //получение всех файлов
-    fun GetFiles (context : Context) : List<String> {
-        return emptyList()
+    fun getFiles (context : Context) : List<String> {
+
+        return try {
+            context.fileList().toList()
+        }
+
+        catch (e: Exception) {
+            emptyList()
+        }
     }
 }
 
