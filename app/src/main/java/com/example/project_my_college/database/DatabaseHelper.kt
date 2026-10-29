@@ -15,13 +15,11 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         const val DATABASE_NAME = "notes_app.db"
         const val DATABASE_VERSION = 1
 
-        //табл users
         const val TABLE_USERS = "Users"
         const val COLUMN_USER_ID = "id"
         const val COLUMN_USER_LOGIN = "login"
         const val COLUMN_USER_PASSWORD = "password"
 
-        //табл notes
         const val TABLE_NOTES = "Notes"
         const val COLUMN_NOTE_ID = "id"
         const val COLUMN_NOTE_USER_ID = "user_id"
@@ -29,9 +27,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         const val COLUMN_NOTE_CREATED_AT = "created_at"
     }
 
-    //когда бд создается впервые
+    // создание таблиц
     override fun onCreate(db: SQLiteDatabase) {
-        //создание users
         val createUsersTable = """
             CREATE TABLE $TABLE_USERS (
                 $COLUMN_USER_ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,23 +38,20 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         """.trimIndent()
         db.execSQL(createUsersTable)
 
-        //создание notes
         val createNotesTable = """
             CREATE TABLE $TABLE_NOTES (
                 $COLUMN_NOTE_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 $COLUMN_NOTE_USER_ID INTEGER NOT NULL,
                 $COLUMN_NOTE_CONTENT TEXT NOT NULL,
                 $COLUMN_NOTE_CREATED_AT TEXT NOT NULL,
-                FOREIGN KEY ($COLUMN_NOTE_USER_ID) 
-                    REFERENCES $TABLE_USERS($COLUMN_USER_ID)
+                FOREIGN KEY ($COLUMN_NOTE_USER_ID) REFERENCES $TABLE_USERS($COLUMN_USER_ID)
             )
         """.trimIndent()
         db.execSQL(createNotesTable)
     }
 
-    //когда меняется версия базы
+    // обновление базы
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        //удалять старые таблицы и создать заново
         db.execSQL("DROP TABLE IF EXISTS $TABLE_NOTES")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_USERS")
         onCreate(db)
