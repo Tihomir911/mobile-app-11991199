@@ -42,7 +42,6 @@ class LoginActivity : AppCompatActivity() {
         val login = loginEditText.text.toString().trim()
         val password = passwordEditText.text.toString()
 
-        // ИСПРАВЛЕНО: добавлено
         if (login.isEmpty()  password.isEmpty()) {
             Toast.makeText(this, "Заполните логин и пароль", Toast.LENGTH_SHORT).show()
             return
@@ -55,57 +54,48 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        val savedPassword = user["password"] as? String
-
-        if (savedPassword != password) {
+        // проверяем пароль из модели User
+        if (user.password != password) {
             Toast.makeText(this, "Неверный пароль", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val userId = user["id"] as? Int
-
-        if (userId == null) {
-            Toast.makeText(this, "Ошибка получения данных", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        saveUserSession(userId, login)
-        openEditor(userId, login)
+        saveUserSession(user.id, login)
+        openEditor(user.id, login)
     }
 
     private fun registerUser() {
         val login = loginEditText.text.toString().trim()
         val password = passwordEditText.text.toString()
 
-        // ИСПРАВЛЕНО: добавлено
         if (login.isEmpty()  password.isEmpty()) {
-            Toast.makeText(this, "Введите логин и пароль", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Введите логин и пароль для регистрации", Toast.LENGTH_SHORT).show()
             return
         }
 
         if (login.length < 3) {
-            Toast.makeText(this, "Логин минимум 3 символа", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Логин должен содержать минимум 3 символа", Toast.LENGTH_SHORT).show()
             return
         }
 
         if (password.length < 4) {
-            Toast.makeText(this, "Пароль минимум 4 символа", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Пароль должен содержать минимум 4 символа", Toast.LENGTH_SHORT).show()
             return
         }
 
         if (userDao.UserExists(login)) {
-            Toast.makeText(this, "Пользователь уже существует", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Такой пользователь уже существует", Toast.LENGTH_SHORT).show()
             return
         }
 
         val newUserId = userDao.InsertUser(login, password)
 
         if (newUserId == -1L) {
-            Toast.makeText(this, "Ошибка регистрации", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Не удалось создать пользователя", Toast.LENGTH_SHORT).show()
             return
         }
 
-        Toast.makeText(this, "Успешная регистрация", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Регистрация успешно завершена", Toast.LENGTH_SHORT).show()
         saveUserSession(newUserId.toInt(), login)
         openEditor(newUserId.toInt(), login)
     }
@@ -128,3 +118,4 @@ class LoginActivity : AppCompatActivity() {
         finish()
     }
 }
+

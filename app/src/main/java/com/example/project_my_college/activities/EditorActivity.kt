@@ -30,7 +30,7 @@ class EditorActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_editor)
 
-        // Внимание: ID должны совпадать с XML!
+        // внимание: ID должны совпадать с activity_editor.xml
         noteEditText = findViewById(R.id.etNoteContent)
         saveButton = findViewById(R.id.btnSave)
         chooseFileButton = findViewById(R.id.btnChooseFile)
@@ -53,10 +53,15 @@ class EditorActivity : AppCompatActivity() {
 
         loadLastNote()
 
-        saveButton.setOnClickListener { saveNote() }
-        logoutButton.setOnClickListener { logout() }
+        saveButton.setOnClickListener {
+            saveNote()
+        }
 
-        // ИСПРАВЛЕНО: открываем НАШ экран файлов
+        logoutButton.setOnClickListener {
+            logout()
+        }
+
+        // открываем наш экран файлов и передаем туда текст
         chooseFileButton.setOnClickListener {
             val textToSave = noteEditText.text.toString()
 
@@ -73,12 +78,14 @@ class EditorActivity : AppCompatActivity() {
 
     private fun loadLastNote() {
         val notes = noteDao.GetNotesByUserId(userId)
-        if (notes.isEmpty()) return
+
+        if (notes.isEmpty()) {
+            return
+        }
 
         val lastNote = notes.last()
-        currentNoteId = lastNote["id"] as? Int ?: -1
-        val content = lastNote["content"] as? String ?: ""
-        noteEditText.setText(content)
+        currentNoteId = lastNote.id
+        noteEditText.setText(lastNote.content)
     }
 
     private fun saveNote() {
@@ -91,18 +98,21 @@ class EditorActivity : AppCompatActivity() {
 
         if (currentNoteId == -1) {
             val newNoteId = noteDao.InsertNote(userId, content)
+
             if (newNoteId == -1L) {
-                Toast.makeText(this, "Ошибка сохранения", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Не удалось сохранить заметку", Toast.LENGTH_SHORT).show()
                 return
             }
+
             currentNoteId = newNoteId.toInt()
             Toast.makeText(this, "Заметка сохранена", Toast.LENGTH_SHORT).show()
         } else {
             val updated = noteDao.UpdateNote(currentNoteId, content)
+
             if (updated) {
                 Toast.makeText(this, "Заметка обновлена", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Ошибка обновления", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Не удалось обновить заметку", Toast.LENGTH_SHORT).show()
             }
         }
     }
