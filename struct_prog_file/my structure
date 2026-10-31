@@ -4,28 +4,28 @@ project_my_college/
     ├── manifests/
     └── kotlin+java/
         └── com.example.project_my_college/
-            ├── activities/
-            │   ├── EditorActivity.kt
-            │   ├── FileManagerActivity.kt
-            │   └── LoginActivity.kt
-            ├── database/
-            │   ├── DatabaseHelper.kt
-            │   ├── NoteDao.kt
-            │   └── UserDao.kt
-            ├── models/
-            │   ├── Note.kt
-            │   └── User.kt
+            ├── activities/ #sergey/makan
+            │   ├── EditorActivity.kt #sdelan makan
+            │   ├── FileManagerActivity.kt #sdelan makan
+            │   └── LoginActivity.kt #ne sdelal
+            ├── database/ #sergey 
+            │   ├── DatabaseHelper.kt #sdelan
+            │   ├── NoteDao.kt #sdelan
+            │   └── UserDao.kt #sdelan
+            ├── models/ # ilia
+            │   ├── Note.k #ne sdelal
+            │   └── User.kt #ne sdelal
             ├── ui.theme
             │   └── │ 
-            │       ├── Color.kt
-            │       ├── Theme.kt
-            │       └── Type.kt
-            ├── utils/
-            │   └── FileHelper.kt
-            ├── MainActivity.kt
-            ├── androidTest/
+            │       ├── Color.kt #sdelal
+            │       ├── Theme.kt #sdelal
+            │       └── Type.kt #sdelal
+            ├── utils/ # ilia
+            │   └── FileHelper.kt #sdelan
+            ├── MainActivity.ket#sdelan 
+            ├── androidTest/ #sergey
             │   └── com.example.project_my_college/
-            │       └── ExampleInstrumentedTest.kt
-            └── test/
+            │       └── ExampleInstrumentedTest.kt #ne sdelal
+            └── test/ #sergey 
                 └── com.example.project_my_college/
-                    └── ExampleUnitTest.kt
+                    └── ExampleUnitTest.kt #ne sdelal
