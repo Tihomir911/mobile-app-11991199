@@ -1,0 +1,246 @@
+# Анализ ошибок database
+
+## 4. app/src/main/java/com/example/project_my_college/database/DatabaseHelper.kt
+
+```kotlin
+package com.example.project_my_college.database
+
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(
+    context,
+    DATABASE_NAME,
+    null,
+    DATABASE_VERSION
+) {
+
+    companion object {
+        const val DATABASE_NAME = "notes_app.db"
+        const val DATABASE_VERSION = 1
+
+        const val TABLE_USERS = "Users"
+        const val COLUMN_USER_ID = "id"
+        const val COLUMN_USER_LOGIN = "login"
+        const val COLUMN_USER_PASSWORD = "password"
+
+        const val TABLE_NOTES = "Notes"
+        const val COLUMN_NOTE_ID = "id"
+        const val COLUMN_NOTE_USER_ID = "user_id"
+        const val COLUMN_NOTE_CONTENT = "content"
+        const val COLUMN_NOTE_CREATED_AT = "created_at"
+    }
+
+    // в sqlite на андроиде внешние ключи (FOREIGN KEY) по дефолту выключены и просто игнорируются.
+    // чтобы связь таблицы Notes с таблицей Users реально работала, нужно переопределить метод
+    // override fun onConfigure(db: SQLiteDatabase) {
+    //     super.onConfigure(db)
+    //     db.setForeignKeyConstraintsEnabled(true)
+    // }
+
+    // создание таблиц
+    override fun onCreate(db: SQLiteDatabase) {
+        val createUsersTable = """
+            CREATE TABLE $TABLE_USERS (
+                $COLUMN_USER_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COLUMN_USER_LOGIN TEXT UNIQUE NOT NULL,
+                $COLUMN_USER_PASSWORD TEXT NOT NULL
+            )
+        """.trimIndent()
+        db.execSQL(createUsersTable)
+
+        // в конец строчки FOREIGN KEY лучше дописать ON DELETE CASCADE,
+        // чтобы при удалении юзера его заметки тоже автоматически удалялись из базы
+        val createNotesTable = """
+            CREATE TABLE $TABLE_NOTES (
+                $COLUMN_NOTE_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COLUMN_NOTE_USER_ID INTEGER NOT NULL,
+                $COLUMN_NOTE_CONTENT TEXT NOT NULL,
+                $COLUMN_NOTE_CREATED_AT TEXT NOT NULL,
+                FOREIGN KEY ($COLUMN_NOTE_USER_ID) REFERENCES $TABLE_USERS($COLUMN_USER_ID)
+            )
+        """.trimIndent()
+        db.execSQL(createNotesTable)
+    }
+
+    // обновление базы
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_NOTES")
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_USERS")
+        onCreate(db)
+    }
+}
+```
+
+## 5. app/src/main/java/com/example/project_my_college/database/UserDao.kt
+
+```kotlin
+package com.example.project_my_college.database
+
+import android.content.ContentValues
+import android.content.Context
+import com.example.project_my_college.models.User
+
+class UserDao(context: Context) {
+
+    private val dbHelper = DatabaseHelper(context)
+
+    // поиск пользователя по логину
+    // по кодстайлу котлина функции всегда пишутся с маленькой буквы — надо переименовать в getUserByLogin
+    fun GetUserByLogin(login: String): User? {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            DatabaseHelper.TABLE_USERS,
+            null,
+            "${DatabaseHelper.COLUMN_USER_LOGIN} = ?",
+            arrayOf(login),
+            null, null, null
+        )
+
+        var user: User? = null
+
+        // курсор и базу тут закрывают руками в самом низу. если внутри блока чтения вылетит ошибка,
+        // cursor.close() не выполнится и будет утечка памяти. лучше обернуть чтение в cursor.use { ... }
+        if (cursor.moveToFirst()) {
+            val id = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_USER_ID))
+            val userLogin = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_USER_LOGIN))
+            val password = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_USER_PASSWORD))
+            user = User(id, userLogin, password)
+        }
+        cursor.close()
+        db.close()
+        return user
+    }
+
+    // добавление нового пользователя
+    // переименовать метод с маленькой буквы: insertUser.
+    // и еще момент для защиты: пароль сохраняется в базу обычным текстом без хэширования (для учебного проекта ок, но препод может спросить)
+    fun InsertUser(login: String, password: String): Long {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(DatabaseHelper.COLUMN_USER_LOGIN, login)
+            put(DatabaseHelper.COLUMN_USER_PASSWORD, password)
+        }
+        val newId = db.insert(DatabaseHelper.TABLE_USERS, null, values)
+        db.close()
+        return newId
+    }
+
+    // проверка на существование логина
+    // переименовать с маленькой буквы: userExists. и тут тоже лучше закрывать курсор через cursor.use { ... }
+    fun UserExists(login: String): Boolean {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            DatabaseHelper.TABLE_USERS,
+            arrayOf(DatabaseHelper.COLUMN_USER_ID),
+            "${DatabaseHelper.COLUMN_USER_LOGIN} = ?",
+            arrayOf(login),
+            null, null, null
+        )
+        val exists = cursor.count > 0
+        cursor.close()
+        db.close()
+        return exists
+    }
+}
+```
+
+## 6. app/src/main/java/com/example/project_my_college/database/NoteDao.kt
+
+```kotlin
+package com.example.project_my_college.database
+
+import android.content.ContentValues
+import android.content.Context
+import com.example.project_my_college.models.Note
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+class NoteDao(context: Context) {
+
+    private val dbHelper = DatabaseHelper(context)
+
+    // сохранение заметки
+    // insertNote
+    fun InsertNote(userId: Int, content: String): Long {
+        val db = dbHelper.writableDatabase
+        val currentDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+
+        val values = ContentValues().apply {
+            put(DatabaseHelper.COLUMN_NOTE_USER_ID, userId)
+            put(DatabaseHelper.COLUMN_NOTE_CONTENT, content)
+            put(DatabaseHelper.COLUMN_NOTE_CREATED_AT, currentDate)
+        }
+        val newId = db.insert(DatabaseHelper.TABLE_NOTES, null, values)
+        db.close()
+        return newId
+    }
+
+    // получение всех заметок пользователя
+    // getNotesByUserId
+    fun GetNotesByUserId(userId: Int): List<Note> {
+        val db = dbHelper.readableDatabase
+        val notesList = mutableListOf<Note>()
+        
+        val cursor = db.query(
+            DatabaseHelper.TABLE_NOTES,
+            null,
+            "${DatabaseHelper.COLUMN_NOTE_USER_ID} = ?",
+            arrayOf(userId.toString()),
+            null, null, null
+        )
+
+        // тут тоже лучше использовать cursor.use {...}, чтобы курсор гарантированно закрывался даже при сбое
+        if (cursor.moveToFirst()) {
+            val idIndex = cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_NOTE_ID)
+            val contentIndex = cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_NOTE_CONTENT)
+            val dateIndex = cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_NOTE_CREATED_AT)
+
+            do {
+                val id = cursor.getInt(idIndex)
+                val content = cursor.getString(contentIndex)
+                val date = cursor.getString(dateIndex)
+                notesList.add(Note(id, userId, content, date))
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        db.close()
+        return notesList
+    }
+
+    // удаление заметки
+    // переименовать с маленькой буквы: deleteNote.
+    // плюс этот метод сейчас висит мертвым грузом — он нигде в проекте не вызывается, надо либо добавить кнопку удаления в редактор, либо иметь это в виду
+    fun DeleteNote(noteId: Int): Boolean {
+        val db = dbHelper.writableDatabase
+        val rowsDeleted = db.delete(
+            DatabaseHelper.TABLE_NOTES,
+            "${DatabaseHelper.COLUMN_NOTE_ID} = ?",
+            arrayOf(noteId.toString())
+        )
+        db.close()
+        return rowsDeleted > 0
+    }
+
+    // обновление текста заметки
+    // updateNote.
+    // и тут при редактировании обновляется только текст (COLUMN_NOTE_CONTENT), а дата (COLUMN_NOTE_CREATED_AT) остается старой.
+    // стоит тоже генерировать currentDate и класть в values, чтобы было видно время последнего сохранения
+    fun UpdateNote(noteId: Int, newContent: String): Boolean {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put(DatabaseHelper.COLUMN_NOTE_CONTENT, newContent)
+        }
+        val rowsUpdated = db.update(
+            DatabaseHelper.TABLE_NOTES,
+            values,
+            "${DatabaseHelper.COLUMN_NOTE_ID} = ?",
+            arrayOf(noteId.toString())
+        )
+        db.close()
+        return rowsUpdated > 0
+    }
+}
+```

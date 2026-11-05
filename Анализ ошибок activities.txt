@@ -1,0 +1,417 @@
+Анализ ошибок activities
+
+## 1. app/src/main/java/com/example/project_my_college/activities/LoginActivity.kt
+
+```kotlin
+package com.example.project_my_college.activities
+
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Button
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.example.project_my_college.R
+import com.example.project_my_college.database.UserDao
+
+class LoginActivity : AppCompatActivity() {
+
+    private lateinit var loginEditText: EditText
+    private lateinit var passwordEditText: EditText
+    private lateinit var loginButton: Button
+    private lateinit var registerButton: Button
+
+    // по документации при регистрации еще должно быть подтверждение пароля,
+    // но поля под него тут нет. нужно либо добавить confirmPasswordEditText, либо убрать это из отчета
+
+    private lateinit var userDao: UserDao
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // в гитхабе сейчас нет папки res/layout и файла activity_login.xml, без него R.layout не скомпилируется, надо запушить разметку
+        setContentView(R.layout.activity_login)
+
+        // мы внизу сохраняем сессию в SharedPreferences (is_logged_in = true), но при запуске вообще ее не проверяем.
+        // нужно тут в начале onCreate проверять если юзер уже залогинен, сразу вызывать openEditor() и делать return,
+        // иначе при каждом перезапуске приложения придется заново вводить логин и пароль
+
+        loginEditText = findViewById(R.id.etLogin)
+        passwordEditText = findViewById(R.id.etPassword)
+        loginButton = findViewById(R.id.btnLogin)
+        registerButton = findViewById(R.id.btnRegister)
+
+        userDao = UserDao(this)
+
+        loginButton.setOnClickListener {
+            loginUser()
+        }
+
+        registerButton.setOnClickListener {
+            registerUser()
+        }
+    }
+
+    private fun loginUser() {
+        val login = loginEditText.text.toString().trim()
+        val password = passwordEditText.text.toString()
+
+        // жесткая ошибка компиляции пропущен оператор || между условиями, проект из-за этого не соберется.
+        // нужно исправить на if (login.isEmpty() || password.isEmpty()) {
+        if (login.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Заполните логин и пароль", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // методы в котлине принято называть с маленькой буквы (getUserByLogin)
+        val user = userDao.GetUserByLogin(login)
+
+        // в readme и концепте написано, что если юзер не найден, он создается автоматически, а тут выводится тост и просит регистрацию.
+        // лучше оставить как в коде (через кнопку регистрации), но тогда надо переписать текст в readme, чтобы на защите не придрались
+        if (user == null) {
+            Toast.makeText(this, "Пользователь не найден. Зарегистрируйтесь", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // проверяем пароль из модели User
+        if (user.password != password) {
+            Toast.makeText(this, "Неверный пароль", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        saveUserSession(user.id, login)
+        openEditor(user.id, login)
+    }
+
+    private fun registerUser() {
+        val login = loginEditText.text.toString().trim()
+        val password = passwordEditText.text.toString()
+
+        // тут вторая такая же ошибка компиляции забыли поставить || между проверками
+        // нужно исправить на if (login.isEmpty() || password.isEmpty()) 
+        if (login.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Введите логин и пароль для регистрации", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (login.length < 3) {
+            Toast.makeText(this, "Логин должен содержать минимум 3 символа", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (password.length < 4) {
+            Toast.makeText(this, "Пароль должен содержать минимум 4 символа", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // тут тоже название метода с большой буквы (лучше переименовать в userExists)
+        if (userDao.UserExists(login)) {
+            Toast.makeText(this, "Такой пользователь уже существует", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // insertUser
+        val newUserId = userDao.InsertUser(login, password)
+
+        if (newUserId == -1L) {
+            Toast.makeText(this, "Не удалось создать пользователя", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(this, "Регистрация успешно завершена", Toast.LENGTH_SHORT).show()
+        saveUserSession(newUserId.toInt(), login)
+        openEditor(newUserId.toInt(), login)
+    }
+
+    private fun saveUserSession(userId: Int, login: String) {
+        val preferences = getSharedPreferences("notes_preferences", MODE_PRIVATE)
+        preferences.edit()
+            .putInt("user_id", userId)
+            .putString("user_login", login)
+            .putBoolean("is_logged_in", true)
+            .apply()
+    }
+
+    private fun openEditor(userId: Int, login: String) {
+        val intent = Intent(this, EditorActivity::class.java).apply {
+            putExtra(EditorActivity.EXTRA_USER_ID, userId)
+            putExtra(EditorActivity.EXTRA_USER_LOGIN, login)
+        }
+        startActivity(intent)
+        finish()
+    }
+}
+```
+
+## 2. app/src/main/java/com/example/project_my_college/activities/FileManagerActivity.kt
+
+```kotlin
+package com.example.project_my_college.activities
+
+import android.os.Bundle
+import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ListView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import com.example.project_my_college.R
+import com.example.project_my_college.utils.FileHelper
+
+class FileManagerActivity : AppCompatActivity() {
+
+    private lateinit var listViewFiles: ListView
+    private lateinit var btnAddFile: Button
+    private lateinit var btnBack: Button
+
+    // текст, который мы получили из редактора
+    private var noteContent: String = ""
+    
+    // адаптер для отображения списка файлов
+    private lateinit var adapter: ArrayAdapter<String>
+    private val fileList: MutableList<String> = mutableListOf()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // разметки activity_file_manager.xml нет в репозитории (плюс в structProj.txt она вообще названа dialog_file_manager.xml),
+        // нужно залить сам xml файл и выровнять названия в доках
+        setContentView(R.layout.activity_file_manager)
+
+        listViewFiles = findViewById(R.id.listViewFiles)
+        btnAddFile = findViewById(R.id.btnAddFile)
+        btnBack = findViewById(R.id.btnBack)
+
+        // получаем текст, переданный из EditorActivity
+        noteContent = intent.getStringExtra("note_content") ?: ""
+
+        // настраиваем список
+        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, fileList)
+        listViewFiles.adapter = adapter
+
+        loadFiles()
+
+        // кнопка "+" для создания нового файла
+        btnAddFile.setOnClickListener {
+            showCreateFileDialog()
+        }
+
+        // клик по файлу из списка (сохраняем в него текст)
+        listViewFiles.setOnItemClickListener { _, _, position, _ ->
+            val fileName = fileList[position]
+            saveToFile(fileName)
+        }
+
+        // кнопка "назад" в редактор
+        btnBack.setOnClickListener {
+            finish()
+        }
+    }
+
+    // загрузка списка файлов
+    private fun loadFiles() {
+        fileList.clear()
+        // метод с маленькой буквы
+        // тут две проблемы во-первых, getFiles() тянет вообще все файлы из папки приложения, включая системный мусор андроида (типа profileInstalled),
+        // поэтому надо фильтровать только .txt файлы.
+        // во-вторых, файлы никак не привязаны к userId, поэтому все аккаунты на телефоне видят файлы друг друга
+        fileList.addAll(FileHelper.getFiles(this))
+        adapter.notifyDataSetChanged()
+    }
+
+    // окно создания файла
+    private fun showCreateFileDialog() {
+        val input = EditText(this)
+        input.hint = "Название файла"
+
+        AlertDialog.Builder(this)
+            .setTitle("Новый файл")
+            .setView(input)
+            .setPositiveButton("Создать") { _, _ ->
+                val fileName = input.text.toString().trim()
+                
+                if (fileName.isEmpty()) {
+                    Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                // нет проверки на запрещенные символы (например "/" или "\\"). если ввести слэш, создание файла упадет.
+                // стоит добавить хотя бы if (fileName.contains("/"))
+
+                // добавляем .txt, если пользователь забыл
+                val fullName = if (fileName.endsWith(".txt")) fileName else "$fileName.txt"
+
+                // createFile в FileHelper ничего не возвращает и просто глотает ошибки в пустом catch.
+                // получается, даже если файл не создался или уже был, мы все равно пишем "Файл создан".
+                // нужно чтобы createFile возвращал Boolean, и тут проверять через if
+                FileHelper.createFile(this, fullName)
+                Toast.makeText(this, "Файл создан", Toast.LENGTH_SHORT).show()
+                
+                // обновляем список
+                loadFiles()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    // запись текста в выбранный файл
+    private fun saveToFile(fileName: String) {
+        if (noteContent.isEmpty()) {
+            Toast.makeText(this, "Нет текста для записи", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // в FileHelper.writeFile вообще нет try-catch. если при записи случится ошибка доступа или кончится память приложение просто вылетит.
+        // плюс после успешной записи логично закрывать экран файлового менеджера через finish(), чтобы юзер вернулся в редактор
+        FileHelper.writeFile(this, fileName, noteContent)
+        Toast.makeText(this, "Текст записан в $fileName", Toast.LENGTH_SHORT).show()
+    }
+}
+```
+
+## 3. app/src/main/java/com/example/project_my_college/activities/EditorActivity.kt
+
+```kotlin
+package com.example.project_my_college.activities
+
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Button
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.example.project_my_college.R
+import com.example.project_my_college.database.NoteDao
+
+class EditorActivity : AppCompatActivity() {
+
+    private lateinit var noteEditText: EditText
+    private lateinit var saveButton: Button
+    private lateinit var chooseFileButton: Button
+    private lateinit var logoutButton: Button
+
+    private lateinit var noteDao: NoteDao
+
+    private var userId: Int = -1
+    private var currentNoteId: Int = -1
+
+    companion object {
+        const val EXTRA_USER_ID = "user_id"
+        const val EXTRA_USER_LOGIN = "user_login"
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // файла activity_editor.xml тоже нет в гитхабе, нужно обязательно залить разметку в res/layout
+        setContentView(R.layout.activity_editor)
+
+        // ID должны совпадать с activity_editor.xml
+        noteEditText = findViewById(R.id.etNoteContent)
+        saveButton = findViewById(R.id.btnSave)
+        chooseFileButton = findViewById(R.id.btnChooseFile)
+        logoutButton = findViewById(R.id.btnLogout)
+
+        noteDao = NoteDao(this)
+
+        userId = intent.getIntExtra(EXTRA_USER_ID, -1)
+
+        if (userId == -1) {
+            val preferences = getSharedPreferences("notes_preferences", MODE_PRIVATE)
+            userId = preferences.getInt("user_id", -1)
+        }
+
+        if (userId == -1) {
+            Toast.makeText(this, "Пользователь не найден", Toast.LENGTH_SHORT).show()
+            goToLogin()
+            return
+        }
+
+        loadLastNote()
+
+        saveButton.setOnClickListener {
+            saveNote()
+        }
+
+        logoutButton.setOnClickListener {
+            logout()
+        }
+
+        // открываем наш экран файлов и передаем туда текст
+        chooseFileButton.setOnClickListener {
+            val textToSave = noteEditText.text.toString()
+
+            // тут логический затык если поле пустое, мы даже не пускаем юзера в файловый менеджер.
+            // а если юзер захочет наоборот открыть существующий файл и прочитать из него текст в редактор?
+            // в FileHelper написан метод readFile(), но он вообще нигде не используется
+            if (textToSave.trim().isEmpty()) {
+                Toast.makeText(this, "Сначала напишите текст", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val intent = Intent(this, FileManagerActivity::class.java)
+            intent.putExtra("note_content", textToSave)
+            startActivity(intent)
+        }
+    }
+
+    private fun loadLastNote() {
+        // метод в NoteDao назван с большой буквы, лучше переименовать в getNotesByUserId
+        val notes = noteDao.GetNotesByUserId(userId)
+
+        if (notes.isEmpty()) {
+            return
+        }
+
+        // из-за того что тут сразу ставится currentNoteId = lastNote.id, юзер может иметь только одну заметку в базе.
+        // при каждом нажатии "сохранить" будет срабатывать ветка else (UpdateNote), а создать вторую новую заметку невозможно,
+        // потому что нет кнопки "новая заметка" или "удалить" (хотя метод DeleteNote в NoteDao написан, но нигде не вызывается)
+        val lastNote = notes.last()
+        currentNoteId = lastNote.id
+        noteEditText.setText(lastNote.content)
+    }
+
+    private fun saveNote() {
+        val content = noteEditText.text.toString()
+
+        if (content.trim().isEmpty()) {
+            Toast.makeText(this, "Нельзя сохранить пустую заметку", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (currentNoteId == -1) {
+            // insertNote
+            val newNoteId = noteDao.InsertNote(userId, content)
+
+            if (newNoteId == -1L) {
+                Toast.makeText(this, "Не удалось сохранить заметку", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            currentNoteId = newNoteId.toInt()
+            Toast.makeText(this, "Заметка сохранена", Toast.LENGTH_SHORT).show()
+        } else {
+            // updateNote
+            val updated = noteDao.UpdateNote(currentNoteId, content)
+
+            if (updated) {
+                Toast.makeText(this, "Заметка обновлена", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Не удалось обновить заметку", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun logout() {
+        val preferences = getSharedPreferences("notes_preferences", MODE_PRIVATE)
+        preferences.edit().clear().apply()
+        goToLogin()
+    }
+
+    private fun goToLogin() {
+        val intent = Intent(this, LoginActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
+    }
+}
+```
