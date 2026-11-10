@@ -1,3 +1,7 @@
+Анализ ошибок
+
+1. app/src/main/java/com/example/project_my_college/utils/FileHelper.kt
+
 package com.example.project_my_college.utils
 
 
