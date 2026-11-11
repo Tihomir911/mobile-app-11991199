@@ -13,12 +13,17 @@ import java.io.File
 object FileHelper {
     //прочиать содержимое файла
     fun readFile ( context: Context , filename : String): String {
+        if ("/" in filename || "\\" in filename || filename.isBlank() || filename == "." || filename == "..") {
+            println("недопустимое имя файла : $filename")
+            return "ошибка чтения файла: неправильное имя файла"
+        }
         val file = File(context.filesDir, filename)
         return try {
             file.readText()
         }
         catch (e: Exception){
-            return "ошибка чтения файла: ${e.message}"
+            println("ошибка чтения файла: ${e.message}")
+            ""
         }  // сделать так же для файла который не найден в идеале
 
 
@@ -26,7 +31,7 @@ object FileHelper {
     //запись в файл
     fun writeFile (context : Context , filename: String , text : String): Boolean {
 
-        if ("/" in filename|| "\\" in filename) {
+        if ("/" in filename|| "\\" in filename || filename.isBlank() || filename == "." || filename == "..") {
             println("недопустимое имя файла : $filename")
             return false
         }
@@ -47,6 +52,12 @@ object FileHelper {
 
     //создать файл
     fun createFile (context : Context , filename : String) : Boolean {
+
+        if ("/" in filename || "\\" in filename || filename.isBlank() || filename == "." || filename == "..") {
+            println("недопустимое имя файла : $filename")
+            return false
+        }
+
         val file = File(context.filesDir , filename)
         return try{
             file.createNewFile()
