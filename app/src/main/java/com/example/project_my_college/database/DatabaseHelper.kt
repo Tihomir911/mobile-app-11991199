@@ -27,7 +27,13 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         const val COLUMN_NOTE_CREATED_AT = "created_at"
     }
 
-    // создание таблиц
+    // включаем поддержку внешних ключей
+    override fun onConfigure(db: SQLiteDatabase) {
+        super.onConfigure(db)
+        db.setForeignKeyConstraintsEnabled(true)
+    }
+
+    // создание таблиц при первом запуске
     override fun onCreate(db: SQLiteDatabase) {
         val createUsersTable = """
             CREATE TABLE $TABLE_USERS (
@@ -38,19 +44,20 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         """.trimIndent()
         db.execSQL(createUsersTable)
 
+        // ON DELETE CASCADE, при удалении юзера удалялись и его заметки
         val createNotesTable = """
             CREATE TABLE $TABLE_NOTES (
                 $COLUMN_NOTE_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 $COLUMN_NOTE_USER_ID INTEGER NOT NULL,
                 $COLUMN_NOTE_CONTENT TEXT NOT NULL,
                 $COLUMN_NOTE_CREATED_AT TEXT NOT NULL,
-                FOREIGN KEY ($COLUMN_NOTE_USER_ID) REFERENCES $TABLE_USERS($COLUMN_USER_ID)
+                FOREIGN KEY ($COLUMN_NOTE_USER_ID) REFERENCES $TABLE_USERS($COLUMN_USER_ID) ON DELETE CASCADE
             )
         """.trimIndent()
         db.execSQL(createNotesTable)
     }
 
-    // обновление базы
+    // пересоздание таблиц при смене версии бд
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         db.execSQL("DROP TABLE IF EXISTS $TABLE_NOTES")
         db.execSQL("DROP TABLE IF EXISTS $TABLE_USERS")

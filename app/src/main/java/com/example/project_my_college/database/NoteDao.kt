@@ -11,26 +11,32 @@ class NoteDao(context: Context) {
 
     private val dbHelper = DatabaseHelper(context)
 
-    // сохранение заметки
-    fun InsertNote(userId: Int, content: String): Long {
+    // получаем текущую дату и время в удобном формате
+    private fun getCurrentDate(): String {
+        return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+    }
+
+    // сохранение новой заметки
+    fun insertNote(userId: Int, content: String): Long {
         val db = dbHelper.writableDatabase
-        val currentDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        val currentDate = getCurrentDate()
 
         val values = ContentValues().apply {
             put(DatabaseHelper.COLUMN_NOTE_USER_ID, userId)
             put(DatabaseHelper.COLUMN_NOTE_CONTENT, content)
             put(DatabaseHelper.COLUMN_NOTE_CREATED_AT, currentDate)
         }
+
         val newId = db.insert(DatabaseHelper.TABLE_NOTES, null, values)
         db.close()
         return newId
     }
 
-    // получение всех заметок пользователя
-    fun GetNotesByUserId(userId: Int): List<Note> {
+    // получение всех заметок конкретного пользователя
+    fun getNotesByUserId(userId: Int): List<Note> {
         val db = dbHelper.readableDatabase
         val notesList = mutableListOf<Note>()
-        
+
         val cursor = db.query(
             DatabaseHelper.TABLE_NOTES,
             null,
@@ -39,25 +45,28 @@ class NoteDao(context: Context) {
             null, null, null
         )
 
-        if (cursor.moveToFirst()) {
-            val idIndex = cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_NOTE_ID)
-            val contentIndex = cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_NOTE_CONTENT)
-            val dateIndex = cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_NOTE_CREATED_AT)
+        // безопасно читаем и закрываем курсор через use
+        cursor.use {
+            if (it.moveToFirst()) {
+                val idIndex = it.getColumnIndexOrThrow(DatabaseHelper.COLUMN_NOTE_ID)
+                val contentIndex = it.getColumnIndexOrThrow(DatabaseHelper.COLUMN_NOTE_CONTENT)
+                val dateIndex = it.getColumnIndexOrThrow(DatabaseHelper.COLUMN_NOTE_CREATED_AT)
 
-            do {
-                val id = cursor.getInt(idIndex)
-                val content = cursor.getString(contentIndex)
-                val date = cursor.getString(dateIndex)
-                notesList.add(Note(id, userId, content, date))
-            } while (cursor.moveToNext())
+                do {
+                    val id = it.getInt(idIndex)
+                    val content = it.getString(contentIndex)
+                    val date = it.getString(dateIndex)
+                    notesList.add(Note(id, userId, content, date))
+                } while (it.moveToNext())
+            }
         }
-        cursor.close()
+
         db.close()
         return notesList
     }
 
-    // удаление заметки
-    fun DeleteNote(noteId: Int): Boolean {
+    // удаление заметки по id
+    fun deleteNote(noteId: Int): Boolean {
         val db = dbHelper.writableDatabase
         val rowsDeleted = db.delete(
             DatabaseHelper.TABLE_NOTES,
@@ -68,12 +77,16 @@ class NoteDao(context: Context) {
         return rowsDeleted > 0
     }
 
-    // обновление текста заметки
-    fun UpdateNote(noteId: Int, newContent: String): Boolean {
+    // обновление текста заметки и времени изменения
+    fun updateNote(noteId: Int, newContent: String): Boolean {
         val db = dbHelper.writableDatabase
+        val currentDate = getCurrentDate()
+
         val values = ContentValues().apply {
             put(DatabaseHelper.COLUMN_NOTE_CONTENT, newContent)
+            put(DatabaseHelper.COLUMN_NOTE_CREATED_AT, currentDate)
         }
+
         val rowsUpdated = db.update(
             DatabaseHelper.TABLE_NOTES,
             values,

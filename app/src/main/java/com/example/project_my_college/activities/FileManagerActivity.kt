@@ -17,10 +17,10 @@ class FileManagerActivity : AppCompatActivity() {
     private lateinit var btnAddFile: Button
     private lateinit var btnBack: Button
 
-    // текст, который мы получили из редактора
+    // текст заметки, который передали из редактора
     private var noteContent: String = ""
-    
-    // адаптер для отображения списка файлов
+
+    // адаптер и список для отображения файлов на экране
     private lateinit var adapter: ArrayAdapter<String>
     private val fileList: MutableList<String> = mutableListOf()
 
@@ -32,41 +32,48 @@ class FileManagerActivity : AppCompatActivity() {
         btnAddFile = findViewById(R.id.btnAddFile)
         btnBack = findViewById(R.id.btnBack)
 
-        // получаем текст, переданный из EditorActivity
+        // забираем текст из EditorActivity
         noteContent = intent.getStringExtra("note_content") ?: ""
 
-        // настраиваем список
+        // подключаем адаптер к списку
         adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, fileList)
         listViewFiles.adapter = adapter
 
         loadFiles()
 
-        // кнопка "+" для создания нового файла
+        // кнопка "+" открывает диалог создания нового файла
         btnAddFile.setOnClickListener {
             showCreateFileDialog()
         }
 
-        // клик по файлу из списка (сохраняем в него текст)
+        // при нажатии на файл в списке записываем в него наш текст
         listViewFiles.setOnItemClickListener { _, _, position, _ ->
             val fileName = fileList[position]
             saveToFile(fileName)
         }
 
-        // кнопка "назад" в редактор
+        // выход обратно в редактор
         btnBack.setOnClickListener {
             finish()
         }
     }
 
-    // загрузка списка файлов
+    // загружаем список файлов из памяти приложения
     private fun loadFiles() {
         fileList.clear()
-        // метод кента (с маленькой буквы)
-        fileList.addAll(FileHelper.getFiles(this))
+        val allFiles = FileHelper.getFiles(this)
+
+        // берем только текстовые файлы .txt, чтобы в список не попадал системный мусор андроида
+        for (file in allFiles) {
+            if (file.endsWith(".txt")) {
+                fileList.add(file)
+            }
+        }
+
         adapter.notifyDataSetChanged()
     }
 
-    // окно создания файла
+    // диалоговое окно для создания нового файла
     private fun showCreateFileDialog() {
         val input = EditText(this)
         input.hint = "Название файла"
@@ -76,33 +83,56 @@ class FileManagerActivity : AppCompatActivity() {
             .setView(input)
             .setPositiveButton("Создать") { _, _ ->
                 val fileName = input.text.toString().trim()
-                
+
                 if (fileName.isEmpty()) {
-                    Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Введите название файла", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
-                // добавляем .txt, если пользователь забыл
+                // проверяем, чтобы в имени не было слэшей, иначе создание файла сломается
+                if (fileName.contains("/") || fileName.contains("\\")) {
+                    Toast.makeText(this, "Недопустимые символы в названии", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                // дописываем .txt в конец, если юзер сам не написал
                 val fullName = if (fileName.endsWith(".txt")) fileName else "$fileName.txt"
 
+                // проверяем нет ли уже файла с таким именем
+                if (fileList.contains(fullName)) {
+                    Toast.makeText(this, "Такой файл уже существует", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
                 FileHelper.createFile(this, fullName)
-                Toast.makeText(this, "Файл создан", Toast.LENGTH_SHORT).show()
-                
-                // обновляем список
                 loadFiles()
+
+                // проверяем реально ли файл появился в списке после создания
+                if (fileList.contains(fullName)) {
+                    Toast.makeText(this, "Файл создан", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Не удалось создать файл", Toast.LENGTH_SHORT).show()
+                }
             }
             .setNegativeButton("Отмена", null)
             .show()
     }
 
-    // запись текста в выбранный файл
+    // сохранение текста заметки в выбранный файл
     private fun saveToFile(fileName: String) {
-        if (noteContent.isEmpty()) {
+        if (noteContent.trim().isEmpty()) {
             Toast.makeText(this, "Нет текста для записи", Toast.LENGTH_SHORT).show()
             return
         }
 
-        FileHelper.writeFile(this, fileName, noteContent)
-        Toast.makeText(this, "Текст записан в $fileName", Toast.LENGTH_SHORT).show()
+        // оборачиваем запись в try-catch, FileHelper.writeFile нет защиты от сбоев
+        try {
+            FileHelper.writeFile(this, fileName, noteContent)
+            Toast.makeText(this, "Текст записан в $fileName", Toast.LENGTH_SHORT).show()
+            // закрываем менеджер файлов и возвращаемся в редактор после успешного сохранения
+            finish()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Ошибка при записи в файл", Toast.LENGTH_SHORT).show()
+        }
     }
 }
