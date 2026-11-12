@@ -1,6 +1,5 @@
 package com.example.project_my_college.utils
 
-
 import android.content.Context
 import java.io.File
 
@@ -13,7 +12,7 @@ import java.io.File
 object FileHelper {
     //прочиать содержимое файла
     fun readFile ( context: Context , filename : String): String {
-        if ("/" in filename || "\\" in filename || filename.isBlank() || filename == "." || filename == "..") {
+        if ("/" in filename || "\\" in filename || filename.isBlank() || filename == "..") {
             println("недопустимое имя файла : $filename")
             return "ошибка чтения файла: неправильное имя файла"
         }
@@ -31,7 +30,7 @@ object FileHelper {
     //запись в файл
     fun writeFile (context : Context , filename: String , text : String): Boolean {
 
-        if ("/" in filename|| "\\" in filename || filename.isBlank() || filename == "." || filename == "..") {
+        if ("/" in filename|| "\\" in filename || filename.isBlank() || filename == "..") {
             println("недопустимое имя файла : $filename")
             return false
         }
@@ -53,7 +52,7 @@ object FileHelper {
     //создать файл
     fun createFile (context : Context , filename : String) : Boolean {
 
-        if ("/" in filename || "\\" in filename || filename.isBlank() || filename == "." || filename == "..") {
+        if ("/" in filename || "\\" in filename || filename.isBlank() || filename == "..") {
             println("недопустимое имя файла : $filename")
             return false
         }
@@ -73,6 +72,11 @@ object FileHelper {
 
         return try {
             context.fileList().toList().filter {it.endsWith(".txt")}
+            context.fileList().toList().filter {it.endWith(".obt")}
+            context.fileList().toList().filter {it.endWith(".xml")}
+            context.fileList().toList().filter {it.endWith(".docx")}
+            context.fileList().toList().filter {it.endWith(".md")
+            
         }
         catch (e: Exception) {
             println("ошибка получения списка файлов: ${e.message}")
