@@ -84,13 +84,13 @@ class FileManagerActivity : AppCompatActivity() {
             .setPositiveButton("Создать") { _, _ ->
                 val fileName = input.text.toString().trim()
 
-                if (fileName.isEmpty()) {
+                if (fileName.isBlank()) {
                     Toast.makeText(this, "Введите название файла", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
                 // проверяем, чтобы в имени не было слэшей, иначе создание файла сломается
-                if (fileName.contains("/") || fileName.contains("\\")) {
+                if ("/" in fileName || "\\" in fileName || ":" in fileName || fileName.isBlank() || fileName == "." || fileName == "..") {
                     Toast.makeText(this, "Недопустимые символы в названии", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
@@ -104,11 +104,11 @@ class FileManagerActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
 
-                FileHelper.createFile(this, fullName)
+                val isCreated = FileHelper.createFile(this, fullName)
                 loadFiles()
 
-                // проверяем реально ли файл появился в списке после создания
-                if (fileList.contains(fullName)) {
+                // проверяем, реально ли файл появился в списке после создания
+                if (isCreated && fileList.contains(fullName)) {
                     Toast.makeText(this, "Файл создан", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this, "Не удалось создать файл", Toast.LENGTH_SHORT).show()
@@ -125,12 +125,15 @@ class FileManagerActivity : AppCompatActivity() {
             return
         }
 
-        // оборачиваем запись в try-catch, FileHelper.writeFile нет защиты от сбоев
         try {
-            FileHelper.writeFile(this, fileName, noteContent)
-            Toast.makeText(this, "Текст записан в $fileName", Toast.LENGTH_SHORT).show()
-            // закрываем менеджер файлов и возвращаемся в редактор после успешного сохранения
-            finish()
+            val isSaved = FileHelper.writeFile(this, fileName, noteContent)
+            if (isSaved) {
+                Toast.makeText(this, "Текст записан в $fileName", Toast.LENGTH_SHORT).show()
+                // закрываем менеджер файлов и возвращаемся в редактор после успешного сохранения
+                finish()
+            } else {
+                Toast.makeText(this, "Ошибка при записи в файл", Toast.LENGTH_SHORT).show()
+            }
         } catch (e: Exception) {
             Toast.makeText(this, "Ошибка при записи в файл", Toast.LENGTH_SHORT).show()
         }
