@@ -71,11 +71,8 @@ object FileHelper {
     fun getFiles (context : Context) : List<String> {
 
         return try {
-            context.fileList().toList().filter {it.endsWith(".txt")}
-            context.fileList().toList().filter {it.endWith(".obt")}
-            context.fileList().toList().filter {it.endWith(".xml")}
-            context.fileList().toList().filter {it.endWith(".docx")}
-            context.fileList().toList().filter {it.endWith(".md")
+            context.fileList().toList().filter {it.endsWith(".txt") || it.endsWith(".md") || it.endsWith(".docx") || it.endsWith(".xml") || it.endsWith(".odt")}
+            
             
         }
         catch (e: Exception) {
