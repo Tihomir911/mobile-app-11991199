@@ -1,0 +1,66 @@
+Разбор ошибок
+
+1. app/src/main/java/com/example/project_my_college/utils/FileHelper.kt
+
+package com.example.project_my_college.utils
+
+
+import android.content.Context
+import java.io.File
+
+
+//удалить
+//переименовать
+//выбрать файл
+// размер файла
+// формат файла
+object FileHelper {
+    //прочиать содержимое файла
+
+# не должна вовзращаться пустая строка в обработке исключений 
+    fun readFile ( context: Context , filename : String): String {
+        val file = File(context.filesDir, filename)
+        return try {
+            file.readText()
+        }
+        catch (e: Exception){
+            ""
+        }  // сделать так же для файла который не найден в идеале
+
+
+    }
+    //запись в файл
+
+  # тут добавить обработку исключений
+    fun writeFile (context : Context , filename: String , text : String) {
+        val file = File(context.filesDir , filename )
+        file.writeText(text)
+
+    }
+
+    //создать файл
+
+  # не должна вовзращаться пустая строка в обработке исключений 
+  # так же должно возвращать boolean 
+    fun createFile (context : Context , filename : String) {
+        val file = File(context.filesDir , filename)
+        try{
+            file.createNewFile()
+        }
+        catch(e : Exception){
+        }
+    }
+
+    //получение всех файлов
+  # возвращает все файлы которые есть в папке приложения, а не только txt
+    fun getFiles (context : Context) : List<String> {
+
+        return try {
+            context.fileList().toList()
+        }
+
+        catch (e: Exception) {
+            emptyList()
+        }
+    }
+}
