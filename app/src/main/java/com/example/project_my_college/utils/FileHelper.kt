@@ -14,7 +14,7 @@ object FileHelper {
     fun readFile ( context: Context , filename : String): String {
         if ("/" in filename || "\\" in filename || filename.isBlank() || filename == "..") {
             println("недопустимое имя файла : $filename")
-            return "ошибка чтения файла: неправильное имя файла"
+            return ""
         }
         val file = File(context.filesDir, filename)
         return try {
@@ -71,7 +71,7 @@ object FileHelper {
     fun getFiles (context : Context) : List<String> {
 
         return try {
-            context.fileList().toList().filter {it.endsWith(".txt") || it.endsWith(".md") || it.endsWith(".docx") || it.endsWith(".xml") || it.endsWith(".odt")}
+            context.fileList().toList().filter {it.endsWith(".txt") }
             
             
         }
