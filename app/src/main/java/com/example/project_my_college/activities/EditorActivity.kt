@@ -47,7 +47,7 @@ class EditorActivity : AppCompatActivity() {
 
         if (userId == -1) {
             Toast.makeText(this, "Пользователь не найден", Toast.LENGTH_SHORT).show()
-            goToLogin()
+            logout()
             return
         }
 
@@ -77,7 +77,7 @@ class EditorActivity : AppCompatActivity() {
     }
 
     private fun loadLastNote() {
-        val notes = noteDao.GetNotesByUserId(userId)
+        val notes = noteDao.getNotesByUserId(userId)
 
         if (notes.isEmpty()) {
             return
@@ -97,7 +97,7 @@ class EditorActivity : AppCompatActivity() {
         }
 
         if (currentNoteId == -1) {
-            val newNoteId = noteDao.InsertNote(userId, content)
+            val newNoteId = noteDao.insertNote(userId, content)
 
             if (newNoteId == -1L) {
                 Toast.makeText(this, "Не удалось сохранить заметку", Toast.LENGTH_SHORT).show()
@@ -107,7 +107,7 @@ class EditorActivity : AppCompatActivity() {
             currentNoteId = newNoteId.toInt()
             Toast.makeText(this, "Заметка сохранена", Toast.LENGTH_SHORT).show()
         } else {
-            val updated = noteDao.UpdateNote(currentNoteId, content)
+            val updated = noteDao.updateNote(currentNoteId, content)
 
             if (updated) {
                 Toast.makeText(this, "Заметка обновлена", Toast.LENGTH_SHORT).show()
