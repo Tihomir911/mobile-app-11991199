@@ -1,6 +1,7 @@
 package com.example.project_my_college.activities
 
 import android.os.Bundle
+import android.text.InputType
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -17,12 +18,10 @@ class FileManagerActivity : AppCompatActivity() {
     private lateinit var btnAddFile: Button
     private lateinit var btnBack: Button
 
-    // текст, который мы получили из редактора
     private var noteContent: String = ""
-    
-    // адаптер для отображения списка файлов
+
     private lateinit var adapter: ArrayAdapter<String>
-    private val fileList: MutableList<String> = mutableListOf()
+    private val fileList = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,77 +31,213 @@ class FileManagerActivity : AppCompatActivity() {
         btnAddFile = findViewById(R.id.btnAddFile)
         btnBack = findViewById(R.id.btnBack)
 
-        // получаем текст, переданный из EditorActivity
         noteContent = intent.getStringExtra("note_content") ?: ""
 
-        // настраиваем список
-        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, fileList)
+        adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_list_item_1,
+            fileList
+        )
+
         listViewFiles.adapter = adapter
 
         loadFiles()
 
-        // кнопка "+" для создания нового файла
         btnAddFile.setOnClickListener {
             showCreateFileDialog()
         }
 
-        // клик по файлу из списка (сохраняем в него текст)
         listViewFiles.setOnItemClickListener { _, _, position, _ ->
             val fileName = fileList[position]
-            saveToFile(fileName)
+            showSaveDialog(fileName)
         }
 
-        // кнопка "назад" в редактор
+        listViewFiles.setOnItemLongClickListener { _, _, position, _ ->
+            val fileName = fileList[position]
+            showFileOptions(fileName)
+            true
+        }
+
         btnBack.setOnClickListener {
             finish()
         }
     }
 
-    // загрузка списка файлов
     private fun loadFiles() {
         fileList.clear()
-        // метод кента (с маленькой буквы)
         fileList.addAll(FileHelper.getFiles(this))
         adapter.notifyDataSetChanged()
     }
 
-    // окно создания файла
     private fun showCreateFileDialog() {
-        val input = EditText(this)
-        input.hint = "Название файла"
+        val input = EditText(this).apply {
+            hint = "Название файла"
+            inputType = InputType.TYPE_CLASS_TEXT
+        }
 
         AlertDialog.Builder(this)
             .setTitle("Новый файл")
             .setView(input)
             .setPositiveButton("Создать") { _, _ ->
-                val fileName = input.text.toString().trim()
-                
-                if (fileName.isEmpty()) {
-                    Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
+
+                val enteredName = input.text.toString().trim()
+
+                if (enteredName.isBlank()) {
+                    showMessage("Введите название файла")
                     return@setPositiveButton
                 }
 
-                // добавляем .txt, если пользователь забыл
-                val fullName = if (fileName.endsWith(".txt")) fileName else "$fileName.txt"
+                val fileName = normalizeFileName(enteredName)
 
-                FileHelper.createFile(this, fullName)
-                Toast.makeText(this, "Файл создан", Toast.LENGTH_SHORT).show()
-                
-                // обновляем список
-                loadFiles()
+                if (fileName == null) {
+                    showMessage("Недопустимое название файла")
+                    return@setPositiveButton
+                }
+
+                if (fileList.contains(fileName)) {
+                    showMessage("Такой файл уже существует")
+                    return@setPositiveButton
+                }
+
+                if (FileHelper.createFile(this, fileName)) {
+                    loadFiles()
+                    showMessage("Файл создан: $fileName")
+                } else {
+                    showMessage("Не удалось создать файл")
+                }
             }
             .setNegativeButton("Отмена", null)
             .show()
     }
 
-    // запись текста в выбранный файл
+    private fun normalizeFileName(name: String): String? {
+        if (
+            name == "." ||
+            name == ".." ||
+            '/' in name ||
+            '\\' in name ||
+            ':' in name ||
+            name.any { it.isISOControl() }
+        ) {
+            return null
+        }
+
+        val result = if (name.endsWith(".txt", ignoreCase = true)) {
+            name
+        } else {
+            "$name.txt"
+        }
+
+        return result.takeIf { it.isNotBlank() }
+    }
+
+    private fun showSaveDialog(fileName: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Сохранение заметки")
+            .setMessage("Записать текущую заметку в файл $fileName?")
+            .setPositiveButton("Сохранить") { _, _ ->
+                saveToFile(fileName)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
     private fun saveToFile(fileName: String) {
-        if (noteContent.isEmpty()) {
-            Toast.makeText(this, "Нет текста для записи", Toast.LENGTH_SHORT).show()
+        if (noteContent.isBlank()) {
+            showMessage("Нет текста для записи")
             return
         }
 
-        FileHelper.writeFile(this, fileName, noteContent)
-        Toast.makeText(this, "Текст записан в $fileName", Toast.LENGTH_SHORT).show()
+        val isSaved = FileHelper.writeFile(
+            this,
+            fileName,
+            noteContent
+        )
+
+        if (isSaved) {
+            showMessage("Заметка сохранена в $fileName")
+            finish()
+        } else {
+            showMessage("Ошибка при сохранении файла")
+        }
+    }
+
+    private fun showFileOptions(fileName: String) {
+        val options = arrayOf(
+            "Переименовать",
+            "Удалить"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle(fileName)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showRenameDialog(fileName)
+                    1 -> showDeleteDialog(fileName)
+                }
+            }
+            .show()
+    }
+
+    private fun showRenameDialog(oldName: String) {
+        val input = EditText(this).apply {
+            setText(oldName.removeSuffix(".txt"))
+            inputType = InputType.TYPE_CLASS_TEXT
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Переименование файла")
+            .setView(input)
+            .setPositiveButton("Переименовать") { _, _ ->
+
+                val enteredName = input.text.toString().trim()
+
+                if (enteredName.isBlank()) {
+                    showMessage("Введите новое название")
+                    return@setPositiveButton
+                }
+
+                val newName = normalizeFileName(enteredName)
+
+                if (newName == null) {
+                    showMessage("Недопустимое название")
+                    return@setPositiveButton
+                }
+
+                if (newName == oldName) {
+                    showMessage("Название не изменилось")
+                    return@setPositiveButton
+                }
+
+                if (FileHelper.renameFile(this, oldName, newName)) {
+                    loadFiles()
+                    showMessage("Файл переименован")
+                } else {
+                    showMessage("Не удалось переименовать файл")
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun showDeleteDialog(fileName: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Удаление файла")
+            .setMessage("Вы действительно хотите удалить $fileName?")
+            .setPositiveButton("Удалить") { _, _ ->
+
+                if (FileHelper.deleteFile(this, fileName)) {
+                    loadFiles()
+                    showMessage("Файл удалён")
+                } else {
+                    showMessage("Не удалось удалить файл")
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun showMessage(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 }

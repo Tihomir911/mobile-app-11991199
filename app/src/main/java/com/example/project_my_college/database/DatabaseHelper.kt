@@ -13,7 +13,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
 
     companion object {
         const val DATABASE_NAME = "notes_app.db"
-        const val DATABASE_VERSION = 1
+
+        const val DATABASE_VERSION = 2
 
         const val TABLE_USERS = "Users"
         const val COLUMN_USER_ID = "id"
@@ -27,33 +28,50 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(
         const val COLUMN_NOTE_CREATED_AT = "created_at"
     }
 
-    // создание таблиц
+    override fun onConfigure(db: SQLiteDatabase) {
+        super.onConfigure(db)
+        db.setForeignKeyConstraintsEnabled(true)
+    }
+
     override fun onCreate(db: SQLiteDatabase) {
-        val createUsersTable = """
+        createUsersTable(db)
+        createNotesTable(db)
+    }
+
+    private fun createUsersTable(db: SQLiteDatabase) {
+        val sql = """
             CREATE TABLE $TABLE_USERS (
                 $COLUMN_USER_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                $COLUMN_USER_LOGIN TEXT UNIQUE NOT NULL,
+                $COLUMN_USER_LOGIN TEXT NOT NULL UNIQUE,
                 $COLUMN_USER_PASSWORD TEXT NOT NULL
             )
         """.trimIndent()
-        db.execSQL(createUsersTable)
 
-        val createNotesTable = """
+        db.execSQL(sql)
+    }
+
+    private fun createNotesTable(db: SQLiteDatabase) {
+        val sql = """
             CREATE TABLE $TABLE_NOTES (
                 $COLUMN_NOTE_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 $COLUMN_NOTE_USER_ID INTEGER NOT NULL,
                 $COLUMN_NOTE_CONTENT TEXT NOT NULL,
                 $COLUMN_NOTE_CREATED_AT TEXT NOT NULL,
-                FOREIGN KEY ($COLUMN_NOTE_USER_ID) REFERENCES $TABLE_USERS($COLUMN_USER_ID)
+                FOREIGN KEY ($COLUMN_NOTE_USER_ID)
+                    REFERENCES $TABLE_USERS($COLUMN_USER_ID)
+                    ON DELETE CASCADE
             )
         """.trimIndent()
-        db.execSQL(createNotesTable)
+
+        db.execSQL(sql)
     }
 
-    // обновление базы
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_NOTES")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_USERS")
-        onCreate(db)
+    override fun onUpgrade(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        newVersion: Int
+    ) {
+        if (oldVersion < 2) {
+        }
     }
 }
