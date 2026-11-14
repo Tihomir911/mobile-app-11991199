@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F6F8F6"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="28dp">
+
+    <!-- Иконка с ростком сверху -->
+    <TextView
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_marginTop="48dp"
+        android:background="@drawable/bg_logo"
+        android:gravity="center"
+        android:text="🌿"
+        android:textSize="32sp" />
+
+    <!-- Заголовок -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Заметки"
+        android:textColor="#1B1C1E"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <!-- Подзаголовок -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="36dp"
+        android:gravity="center"
+        android:text="Твои мысли\nв одном месте"
+        android:textColor="#7A867E"
+        android:textSize="14sp" />
+
+    <!-- Поле Логин -->
+    <EditText
+        android:id="@+id/etLogin"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:background="@drawable/bg_input"
+        android:hint="👤   Логин"
+        android:inputType="text"
+        android:paddingHorizontal="20dp"
+        android:textColor="#1B1C1E"
+        android:textColorHint="#9AA59E"
+        android:textSize="15sp" />
+
+    <!-- Поле Пароль -->
+    <EditText
+        android:id="@+id/etPassword"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_input"
+        android:hint="🔒   Пароль"
+        android:inputType="textPassword"
+        android:paddingHorizontal="20dp"
+        android:textColor="#1B1C1E"
+        android:textColorHint="#9AA59E"
+        android:textSize="15sp" />
+
+    <!-- Кнопка Войти -->
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnLogin"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginTop="24dp"
+        android:background="@drawable/bg_btn_primary"
+        android:stateListAnimator="@null"
+        android:text="Войти"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <!-- Кнопка Регистрация -->
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnRegister"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_btn_outline"
+        android:stateListAnimator="@null"
+        android:text="Регистрация"
+        android:textAllCaps="false"
+        android:textColor="#4E7C5B"
+        android:textSize="16sp" />
+
+</LinearLayout>

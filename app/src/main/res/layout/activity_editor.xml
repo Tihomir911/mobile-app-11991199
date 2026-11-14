@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F6F8F6"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- Верхняя панель: Заголовок + Кнопка Выйти -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingBottom="16dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Заметка"
+            android:textColor="#1B1C1E"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnLogout"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:paddingHorizontal="8dp"
+            android:text="↪ Выйти"
+            android:textAllCaps="false"
+            android:textColor="#5C6860"
+            android:textSize="15sp" />
+    </LinearLayout>
+
+    <!-- Белая карточка с полем для ввода заметки -->
+    <EditText
+        android:id="@+id/etNoteContent"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_card"
+        android:gravity="top|start"
+        android:hint="Начните писать заметку..."
+        android:inputType="textMultiLine"
+        android:padding="20dp"
+        android:textColor="#1B1C1E"
+        android:textColorHint="#9AA59E"
+        android:textSize="16sp" />
+
+    <!-- Нижние две кнопки в один ряд -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnSave"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_btn_primary"
+            android:stateListAnimator="@null"
+            android:text="💾  Сохранить"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnChooseFile"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_btn_outline"
+            android:stateListAnimator="@null"
+            android:text="📎  Выбрать файл"
+            android:textAllCaps="false"
+            android:textColor="#1B1C1E"
+            android:textSize="15sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

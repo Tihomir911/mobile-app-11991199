@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F6F8F6"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- Верхняя шапка: < Назад | Мои файлы | + -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingBottom="16dp">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:gravity="start|center_vertical"
+            android:minWidth="0dp"
+            android:paddingHorizontal="4dp"
+            android:text="‹  Назад"
+            android:textAllCaps="false"
+            android:textColor="#4E7C5B"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Мои файлы"
+            android:textColor="#1B1C1E"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnAddFile"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@android:color/transparent"
+            android:gravity="center"
+            android:text="+"
+            android:textAllCaps="false"
+            android:textColor="#1B1C1E"
+            android:textSize="28sp" />
+
+    </LinearLayout>
+
+    <!-- Список файлов в карточке -->
+    <ListView
+        android:id="@+id/listViewFiles"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_card"
+        android:divider="#F6F8F6"
+        android:dividerHeight="10dp"
+        android:padding="12dp" />
+
+</LinearLayout>
