@@ -49,7 +49,14 @@ class FileManagerActivity : AppCompatActivity() {
         // при нажатии на файл в списке записываем в него наш текст
         listViewFiles.setOnItemClickListener { _, _, position, _ ->
             val fileName = fileList[position]
-            saveToFile(fileName)
+            AlertDialog.Builder(this)
+                .setTitle("Сохранение в файл")
+                .setMessage("Записать текст в файл $fileName?")
+                .setPositiveButton("Да") { _, _ ->
+                    saveToFile(fileName)
+                }
+                .setNegativeButton("Отмена", null)
+                .show()
         }
 
         // выход обратно в редактор
@@ -61,14 +68,8 @@ class FileManagerActivity : AppCompatActivity() {
     // загружаем список файлов из памяти приложения
     private fun loadFiles() {
         fileList.clear()
-        val allFiles = FileHelper.getFiles(this)
-
         // берем только текстовые файлы .txt, чтобы в список не попадал системный мусор андроида
-        for (file in allFiles) {
-            if (file.endsWith(".txt")) {
-                fileList.add(file)
-            }
-        }
+        fileList.addAll(FileHelper.getFiles(this))
 
         adapter.notifyDataSetChanged()
     }
@@ -96,7 +97,7 @@ class FileManagerActivity : AppCompatActivity() {
                 }
 
                 // дописываем .txt в конец, если юзер сам не написал
-                val fullName = if (fileName.endsWith(".txt")) fileName else "$fileName.txt"
+                val fullName = if (fileName.contains(".")) fileName else "$fileName.txt"
 
                 // проверяем нет ли уже файла с таким именем
                 if (fileList.contains(fullName)) {
@@ -125,6 +126,7 @@ class FileManagerActivity : AppCompatActivity() {
             return
         }
 
+        // оборачиваем запись в try-catch, так как в самом FileHelper.writeFile нет защиты от сбоев
         try {
             val isSaved = FileHelper.writeFile(this, fileName, noteContent)
             if (isSaved) {

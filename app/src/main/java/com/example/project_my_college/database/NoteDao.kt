@@ -42,7 +42,9 @@ class NoteDao(context: Context) {
             null,
             "${DatabaseHelper.COLUMN_NOTE_USER_ID} = ?",
             arrayOf(userId.toString()),
-            null, null, null
+            null,
+            null,
+            "${DatabaseHelper.COLUMN_NOTE_ID} ASC"
         )
 
         // безопасно читаем и закрываем курсор через use
@@ -80,11 +82,9 @@ class NoteDao(context: Context) {
     // обновление текста заметки и времени изменения
     fun updateNote(noteId: Int, newContent: String): Boolean {
         val db = dbHelper.writableDatabase
-        val currentDate = getCurrentDate()
 
         val values = ContentValues().apply {
             put(DatabaseHelper.COLUMN_NOTE_CONTENT, newContent)
-            put(DatabaseHelper.COLUMN_NOTE_CREATED_AT, currentDate)
         }
 
         val rowsUpdated = db.update(
