@@ -1,4 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">My College Notes</string>
+
+    <string name="app_name">Заметки</string>
+
+    <!-- Авторизация -->
+    <string name="login_title">Заметки</string>
+    <string name="login_subtitle">Твои мысли\nв одном месте</string>
+    <string name="hint_login">Логин</string>
+    <string name="hint_password">Пароль</string>
+    <string name="login_button">Войти</string>
+    <string name="register_button">Регистрация</string>
+
+    <!-- Редактор -->
+    <string name="editor_title">Заметка</string>
+    <string name="editor_hint">Начните писать заметку...</string>
+    <string name="logout_button">Выйти</string>
+    <string name="save_button">Сохранить</string>
+    <string name="choose_file_button">Выбрать файл</string>
+
+    <!-- Файловый менеджер -->
+    <string name="file_manager_title">Мои файлы</string>
+    <string name="back_button">Назад</string>
+    <string name="file_meta">TXT · Локальное хранилище</string>
+    <string name="add_file_description">Создать новый файл</string>
+
 </resources>

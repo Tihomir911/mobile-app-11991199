@@ -3,43 +3,77 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="20dp"
-    android:background="@color/background">
+    android:background="@color/background"
+    android:paddingStart="18dp"
+    android:paddingEnd="18dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="16dp">
 
-    <TextView
+    <!-- Верхняя панель -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Файловый менеджер"
-        android:textColor="@color/primary"
-        android:textSize="25sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-    <Button
-        android:id="@+id/btnAddFile"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Создать файл"
-        android:textAllCaps="false"
-        android:backgroundTint="@color/primary" />
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_button_text"
+            android:drawableStart="@drawable/ic_back"
+            android:drawableTint="@color/text_secondary"
+            android:drawablePadding="3dp"
+            android:text="@string/back_button"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:textAllCaps="false"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="6dp"
+            android:stateListAnimator="@null" />
 
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/file_manager_title"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnAddFile"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_button_text"
+            android:text="+"
+            android:textColor="@color/text_primary"
+            android:textSize="27sp"
+            android:gravity="center"
+            android:contentDescription="@string/add_file_description"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:stateListAnimator="@null" />
+
+    </LinearLayout>
+
+    <!-- Список файлов -->
     <ListView
         android:id="@+id/listViewFiles"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:divider="@color/primary"
-        android:dividerHeight="1dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="12dp"
+        android:layout_marginTop="12dp"
+        android:background="@android:color/transparent"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="10dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="10dp"
+        android:clipToPadding="false"
+        android:scrollbars="none"
+        android:listSelector="@android:color/transparent"
         android:choiceMode="none" />
-
-    <Button
-        android:id="@+id/btnBack"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Назад к редактору"
-        android:textAllCaps="false"
-        android:backgroundTint="@color/primary_dark" />
 
 </LinearLayout>

@@ -2,9 +2,10 @@ package com.example.project_my_college.activities
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
+import android.text.InputType
 import android.widget.EditText
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.project_my_college.R
 import com.example.project_my_college.database.UserDao
@@ -13,43 +14,42 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var loginEditText: EditText
     private lateinit var passwordEditText: EditText
-    private lateinit var loginButton: Button
-    private lateinit var registerButton: Button
 
     private lateinit var userDao: UserDao
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         userDao = UserDao(this)
 
-        // проверяем сохраненную сессию и наличие пользователя в бд
-        val preferences = getSharedPreferences("notes_preferences", MODE_PRIVATE)
-        if (preferences.getBoolean("is_logged_in", false)) {
-            val savedId = preferences.getInt("user_id", -1)
-            val savedLogin = preferences.getString("user_login", "") ?: ""
-            val existingUser = if (savedLogin.isNotEmpty()) userDao.getUserByLogin(savedLogin) else null
+        // Проверяем сохранённую сессию и убеждаемся, что такой пользователь ещё есть в БД.
+        val preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+        if (preferences.getBoolean(KEY_IS_LOGGED_IN, false)) {
+            val savedId = preferences.getInt(KEY_USER_ID, -1)
+            val savedLogin = preferences.getString(KEY_USER_LOGIN, "") ?: ""
+            val savedUser = if (savedLogin.isNotBlank()) {
+                userDao.getUserByLogin(savedLogin)
+            } else {
+                null
+            }
 
-            if (savedId != -1 && existingUser != null && existingUser.id == savedId) {
+            if (savedId > 0 && savedUser?.id == savedId) {
                 openEditor(savedId, savedLogin)
                 return
-            } else {
-                preferences.edit().clear().apply()
             }
+
+            preferences.edit().clear().apply()
         }
 
         setContentView(R.layout.activity_login)
 
         loginEditText = findViewById(R.id.etLogin)
         passwordEditText = findViewById(R.id.etPassword)
-        loginButton = findViewById(R.id.btnLogin)
-        registerButton = findViewById(R.id.btnRegister)
 
-        loginButton.setOnClickListener {
+        findViewById<android.widget.Button>(R.id.btnLogin).setOnClickListener {
             loginUser()
         }
 
-        registerButton.setOnClickListener {
+        findViewById<android.widget.Button>(R.id.btnRegister).setOnClickListener {
             registerUser()
         }
     }
@@ -59,36 +59,23 @@ class LoginActivity : AppCompatActivity() {
         val password = passwordEditText.text.toString()
 
         if (login.isEmpty() || password.isEmpty()) {
-            Toast.makeText(
-                this,
-                "Заполните логин и пароль",
-                Toast.LENGTH_SHORT
-            ).show()
+            showMessage("Заполните логин и пароль")
             return
         }
 
         val user = userDao.getUserByLogin(login)
-
         if (user == null) {
-            Toast.makeText(
-                this,
-                "Пользователь не найден. Зарегистрируйтесь",
-                Toast.LENGTH_SHORT
-            ).show()
+            showMessage("Пользователь не найден. Зарегистрируйтесь")
             return
         }
 
         if (!userDao.verifyUserPassword(login, password)) {
-            Toast.makeText(
-                this,
-                "Неверный пароль",
-                Toast.LENGTH_SHORT
-            ).show()
+            showMessage("Неверный пароль")
             return
         }
 
-        saveUserSession(user.id, login)
-        openEditor(user.id, login)
+        saveUserSession(user.id, user.login)
+        openEditor(user.id, user.login)
     }
 
     private fun registerUser() {
@@ -96,43 +83,76 @@ class LoginActivity : AppCompatActivity() {
         val password = passwordEditText.text.toString()
 
         if (login.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Введите логин и пароль для регистрации", Toast.LENGTH_SHORT).show()
+            showMessage("Введите логин и пароль для регистрации")
             return
         }
 
-        if (login.length < 3) {
-            Toast.makeText(this, "Логин должен содержать минимум 3 символа", Toast.LENGTH_SHORT).show()
+        if (login.length < MIN_LOGIN_LENGTH) {
+            showMessage("Логин должен содержать минимум $MIN_LOGIN_LENGTH символа")
             return
         }
 
-        if (password.length < 4) {
-            Toast.makeText(this, "Пароль должен содержать минимум 4 символа", Toast.LENGTH_SHORT).show()
+        if (password.length < MIN_PASSWORD_LENGTH) {
+            showMessage("Пароль должен содержать минимум $MIN_PASSWORD_LENGTH символа")
             return
         }
 
         if (userDao.userExists(login)) {
-            Toast.makeText(this, "Такой пользователь уже существует", Toast.LENGTH_SHORT).show()
+            showMessage("Такой пользователь уже существует")
+            return
+        }
+
+        showPasswordConfirmation(login, password)
+    }
+
+    private fun showPasswordConfirmation(login: String, password: String) {
+        val confirmationInput = EditText(this).apply {
+            hint = "Повторите пароль"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setSingleLine(true)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Подтверждение пароля")
+            .setMessage("Введите пароль ещё раз")
+            .setView(confirmationInput)
+            .setPositiveButton("Продолжить") { _, _ ->
+                val confirmation = confirmationInput.text.toString()
+                if (confirmation != password) {
+                    showMessage("Пароли не совпадают")
+                    return@setPositiveButton
+                }
+
+                createAccount(login, password)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun createAccount(login: String, password: String) {
+        // Повторная проверка защищает от ситуации, когда такой логин создали за время диалога.
+        if (userDao.userExists(login)) {
+            showMessage("Такой пользователь уже существует")
             return
         }
 
         val newUserId = userDao.insertUser(login, password)
-
-        if (newUserId == -1L) {
-            Toast.makeText(this, "Не удалось создать пользователя", Toast.LENGTH_SHORT).show()
+        if (newUserId <= 0L) {
+            showMessage("Не удалось создать пользователя")
             return
         }
 
-        Toast.makeText(this, "Регистрация успешно завершена", Toast.LENGTH_SHORT).show()
+        showMessage("Регистрация успешно завершена")
         saveUserSession(newUserId.toInt(), login)
         openEditor(newUserId.toInt(), login)
     }
 
     private fun saveUserSession(userId: Int, login: String) {
-        val preferences = getSharedPreferences("notes_preferences", MODE_PRIVATE)
-        preferences.edit()
-            .putInt("user_id", userId)
-            .putString("user_login", login)
-            .putBoolean("is_logged_in", true)
+        getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+            .edit()
+            .putInt(KEY_USER_ID, userId)
+            .putString(KEY_USER_LOGIN, login)
+            .putBoolean(KEY_IS_LOGGED_IN, true)
             .apply()
     }
 
@@ -143,5 +163,19 @@ class LoginActivity : AppCompatActivity() {
         }
         startActivity(intent)
         finish()
+    }
+
+    private fun showMessage(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    companion object {
+        const val PREFERENCES_NAME = "notes_preferences"
+        const val KEY_USER_ID = "user_id"
+        const val KEY_USER_LOGIN = "user_login"
+        const val KEY_IS_LOGGED_IN = "is_logged_in"
+
+        private const val MIN_LOGIN_LENGTH = 3
+        private const val MIN_PASSWORD_LENGTH = 4
     }
 }

@@ -1,5 +1,6 @@
 package com.example.project_my_college.activities
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.widget.ArrayAdapter
@@ -15,86 +16,87 @@ import com.example.project_my_college.utils.FileHelper
 class FileManagerActivity : AppCompatActivity() {
 
     private lateinit var listViewFiles: ListView
-    private lateinit var btnAddFile: Button
-    private lateinit var btnBack: Button
+    private lateinit var adapter: ArrayAdapter<String>
 
     private var noteContent: String = ""
-
-    private lateinit var adapter: ArrayAdapter<String>
     private val fileList = mutableListOf<String>()
+
+    companion object {
+        const val EXTRA_NOTE_CONTENT = "note_content"
+        const val EXTRA_OPENED_FILE_CONTENT = "opened_file_content"
+        const val EXTRA_OPENED_FILE_NAME = "opened_file_name"
+        private const val MAX_FILE_NAME_LENGTH = 80
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_file_manager)
 
         listViewFiles = findViewById(R.id.listViewFiles)
-        btnAddFile = findViewById(R.id.btnAddFile)
-        btnBack = findViewById(R.id.btnBack)
+        val addFileButton = findViewById<Button>(R.id.btnAddFile)
+        val backButton = findViewById<Button>(R.id.btnBack)
 
-        noteContent = intent.getStringExtra("note_content") ?: ""
+        noteContent = intent.getStringExtra(EXTRA_NOTE_CONTENT) ?: ""
 
         adapter = ArrayAdapter(
             this,
-            android.R.layout.simple_list_item_1,
+            R.layout.item_file,
+            R.id.tvFileName,
             fileList
         )
-
         listViewFiles.adapter = adapter
 
         loadFiles()
 
-        btnAddFile.setOnClickListener {
+        addFileButton.setOnClickListener {
             showCreateFileDialog()
         }
 
         listViewFiles.setOnItemClickListener { _, _, position, _ ->
-            val fileName = fileList[position]
-            showSaveDialog(fileName)
+            val fileName = fileList.getOrNull(position) ?: return@setOnItemClickListener
+            showFileActions(fileName)
         }
 
         listViewFiles.setOnItemLongClickListener { _, _, position, _ ->
-            val fileName = fileList[position]
+            val fileName = fileList.getOrNull(position) ?: return@setOnItemLongClickListener true
             showFileOptions(fileName)
             true
         }
 
-        btnBack.setOnClickListener {
+        backButton.setOnClickListener {
             finish()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::adapter.isInitialized) loadFiles()
     }
 
     private fun loadFiles() {
         fileList.clear()
         fileList.addAll(FileHelper.getFiles(this))
-        adapter.notifyDataSetChanged()
+        if (::adapter.isInitialized) adapter.notifyDataSetChanged()
     }
 
     private fun showCreateFileDialog() {
         val input = EditText(this).apply {
             hint = "Название файла"
             inputType = InputType.TYPE_CLASS_TEXT
+            setSingleLine(true)
         }
 
         AlertDialog.Builder(this)
             .setTitle("Новый файл")
             .setView(input)
             .setPositiveButton("Создать") { _, _ ->
-
-                val enteredName = input.text.toString().trim()
-
-                if (enteredName.isBlank()) {
-                    showMessage("Введите название файла")
-                    return@setPositiveButton
-                }
-
-                val fileName = normalizeFileName(enteredName)
-
+                val fileName = normalizeFileName(input.text.toString())
                 if (fileName == null) {
-                    showMessage("Недопустимое название файла")
+                    showMessage("Введите корректное название файла")
                     return@setPositiveButton
                 }
 
-                if (fileList.contains(fileName)) {
+                if (fileList.any { it.equals(fileName, ignoreCase = true) }) {
                     showMessage("Такой файл уже существует")
                     return@setPositiveButton
                 }
@@ -111,30 +113,64 @@ class FileManagerActivity : AppCompatActivity() {
     }
 
     private fun normalizeFileName(name: String): String? {
+        val cleanName = name.trim()
+        if (cleanName.isEmpty() || cleanName.length > MAX_FILE_NAME_LENGTH) return null
         if (
-            name == "." ||
-            name == ".." ||
-            '/' in name ||
-            '\\' in name ||
-            ':' in name ||
-            name.any { it.isISOControl() }
+            cleanName == "." ||
+            cleanName == ".." ||
+            '/' in cleanName ||
+            '\\' in cleanName ||
+            ':' in cleanName ||
+            cleanName.any { it.isISOControl() }
         ) {
             return null
         }
 
-        val result = if (name.endsWith(".txt", ignoreCase = true)) {
-            name
+        return if (cleanName.endsWith(".txt", ignoreCase = true)) {
+            cleanName
         } else {
-            "$name.txt"
+            "$cleanName.txt"
+        }
+    }
+
+    private fun showFileActions(fileName: String) {
+        val actions = if (noteContent.isBlank()) {
+            arrayOf("Открыть файл")
+        } else {
+            arrayOf("Открыть файл", "Сохранить текущую заметку")
         }
 
-        return result.takeIf { it.isNotBlank() }
+        AlertDialog.Builder(this)
+            .setTitle(fileName)
+            .setItems(actions) { _, which ->
+                when (which) {
+                    0 -> openFile(fileName)
+                    1 -> showSaveDialog(fileName)
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun openFile(fileName: String) {
+        val content = FileHelper.readFile(this, fileName)
+        if (content == null) {
+            showMessage("Не удалось прочитать файл")
+            return
+        }
+
+        val result = Intent().apply {
+            putExtra(EXTRA_OPENED_FILE_CONTENT, content)
+            putExtra(EXTRA_OPENED_FILE_NAME, fileName)
+        }
+        setResult(RESULT_OK, result)
+        finish()
     }
 
     private fun showSaveDialog(fileName: String) {
         AlertDialog.Builder(this)
             .setTitle("Сохранение заметки")
-            .setMessage("Записать текущую заметку в файл $fileName?")
+            .setMessage("Записать текущую заметку в файл $fileName? Содержимое файла будет заменено.")
             .setPositiveButton("Сохранить") { _, _ ->
                 saveToFile(fileName)
             }
@@ -148,14 +184,9 @@ class FileManagerActivity : AppCompatActivity() {
             return
         }
 
-        val isSaved = FileHelper.writeFile(
-            this,
-            fileName,
-            noteContent
-        )
-
-        if (isSaved) {
+        if (FileHelper.writeFile(this, fileName, noteContent)) {
             showMessage("Заметка сохранена в $fileName")
+            setResult(RESULT_OK)
             finish()
         } else {
             showMessage("Ошибка при сохранении файла")
@@ -163,17 +194,15 @@ class FileManagerActivity : AppCompatActivity() {
     }
 
     private fun showFileOptions(fileName: String) {
-        val options = arrayOf(
-            "Переименовать",
-            "Удалить"
-        )
+        val options = arrayOf("Открыть файл", "Переименовать", "Удалить")
 
         AlertDialog.Builder(this)
             .setTitle(fileName)
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> showRenameDialog(fileName)
-                    1 -> showDeleteDialog(fileName)
+                    0 -> openFile(fileName)
+                    1 -> showRenameDialog(fileName)
+                    2 -> showDeleteDialog(fileName)
                 }
             }
             .show()
@@ -181,31 +210,29 @@ class FileManagerActivity : AppCompatActivity() {
 
     private fun showRenameDialog(oldName: String) {
         val input = EditText(this).apply {
-            setText(oldName.removeSuffix(".txt"))
+            setText(oldName.removeTxtExtension())
             inputType = InputType.TYPE_CLASS_TEXT
+            setSingleLine(true)
+            setSelection(text.length)
         }
 
         AlertDialog.Builder(this)
             .setTitle("Переименование файла")
             .setView(input)
             .setPositiveButton("Переименовать") { _, _ ->
-
-                val enteredName = input.text.toString().trim()
-
-                if (enteredName.isBlank()) {
-                    showMessage("Введите новое название")
-                    return@setPositiveButton
-                }
-
-                val newName = normalizeFileName(enteredName)
-
+                val newName = normalizeFileName(input.text.toString())
                 if (newName == null) {
-                    showMessage("Недопустимое название")
+                    showMessage("Введите корректное название")
                     return@setPositiveButton
                 }
 
-                if (newName == oldName) {
+                if (newName.equals(oldName, ignoreCase = true)) {
                     showMessage("Название не изменилось")
+                    return@setPositiveButton
+                }
+
+                if (fileList.any { it.equals(newName, ignoreCase = true) }) {
+                    showMessage("Файл с таким названием уже существует")
                     return@setPositiveButton
                 }
 
@@ -225,7 +252,6 @@ class FileManagerActivity : AppCompatActivity() {
             .setTitle("Удаление файла")
             .setMessage("Вы действительно хотите удалить $fileName?")
             .setPositiveButton("Удалить") { _, _ ->
-
                 if (FileHelper.deleteFile(this, fileName)) {
                     loadFiles()
                     showMessage("Файл удалён")
@@ -237,7 +263,16 @@ class FileManagerActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun String.removeTxtExtension(): String {
+        return if (endsWith(".txt", ignoreCase = true)) {
+            dropLast(4)
+        } else {
+            this
+        }
+    }
+
     private fun showMessage(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
+
 }

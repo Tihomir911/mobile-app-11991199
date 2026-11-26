@@ -8,14 +8,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.project_my_college.R
 import com.example.project_my_college.database.NoteDao
+import com.example.project_my_college.database.UserDao
 
 class EditorActivity : AppCompatActivity() {
 
     private lateinit var noteEditText: EditText
-    private lateinit var saveButton: Button
-    private lateinit var chooseFileButton: Button
-    private lateinit var logoutButton: Button
-
     private lateinit var noteDao: NoteDao
 
     private var userId: Int = -1
@@ -24,110 +21,157 @@ class EditorActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_USER_ID = "user_id"
         const val EXTRA_USER_LOGIN = "user_login"
+
+        private const val REQUEST_FILE_MANAGER = 1001
+        private const val STATE_NOTE_ID = "state_note_id"
+        private const val STATE_USER_ID = "state_user_id"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_editor)
 
-        // внимание: ID должны совпадать с activity_editor.xml
         noteEditText = findViewById(R.id.etNoteContent)
-        saveButton = findViewById(R.id.btnSave)
-        chooseFileButton = findViewById(R.id.btnChooseFile)
-        logoutButton = findViewById(R.id.btnLogout)
+        val saveButton = findViewById<Button>(R.id.btnSave)
+        val chooseFileButton = findViewById<Button>(R.id.btnChooseFile)
+        val logoutButton = findViewById<Button>(R.id.btnLogout)
 
         noteDao = NoteDao(this)
 
-        userId = intent.getIntExtra(EXTRA_USER_ID, -1)
+        val preferences = getSharedPreferences(LoginActivity.PREFERENCES_NAME, MODE_PRIVATE)
+        userId = intent.getIntExtra(
+            EXTRA_USER_ID,
+            preferences.getInt(LoginActivity.KEY_USER_ID, -1)
+        )
+        val userLogin = intent.getStringExtra(EXTRA_USER_LOGIN)
+            ?: preferences.getString(LoginActivity.KEY_USER_LOGIN, "")
+            ?: ""
 
-        if (userId == -1) {
-            val preferences = getSharedPreferences("notes_preferences", MODE_PRIVATE)
-            userId = preferences.getInt("user_id", -1)
-        }
-
-        if (userId == -1) {
-            Toast.makeText(this, "Пользователь не найден", Toast.LENGTH_SHORT).show()
+        if (!isSessionValid(userLogin)) {
+            showMessage("Пользователь не найден. Войдите снова")
             logout()
             return
         }
 
-        loadLastNote()
+        currentNoteId = savedInstanceState?.getInt(STATE_NOTE_ID, -1) ?: -1
+        if (savedInstanceState == null || currentNoteId <= 0) {
+            loadLastNote()
+        } else {
+            val savedUserId = savedInstanceState.getInt(STATE_USER_ID, -1)
+            if (savedUserId != userId) {
+                currentNoteId = -1
+                loadLastNote()
+            }
+        }
 
         saveButton.setOnClickListener {
             saveNote()
         }
 
+        chooseFileButton.setOnClickListener {
+            openFileManager()
+        }
+
         logoutButton.setOnClickListener {
             logout()
         }
+    }
 
-        // открываем наш экран файлов и передаем туда текст
-        chooseFileButton.setOnClickListener {
-            val textToSave = noteEditText.text.toString()
+    private fun isSessionValid(login: String): Boolean {
+        if (userId <= 0 || login.isBlank()) return false
 
-            if (textToSave.trim().isEmpty()) {
-                Toast.makeText(this, "Сначала напишите текст", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            val intent = Intent(this, FileManagerActivity::class.java)
-            intent.putExtra("note_content", textToSave)
-            startActivity(intent)
-        }
+        val user = UserDao(this).getUserByLogin(login)
+        return user?.id == userId
     }
 
     private fun loadLastNote() {
-        val notes = noteDao.getNotesByUserId(userId)
-
-        if (notes.isEmpty()) {
-            return
+        val lastNote = noteDao.getLastNoteByUserId(userId)
+        if (lastNote == null) {
+            currentNoteId = -1
+            noteEditText.setText("")
+        } else {
+            currentNoteId = lastNote.id
+            noteEditText.setText(lastNote.content)
         }
-
-        val lastNote = notes.last()
-        currentNoteId = lastNote.id
-        noteEditText.setText(lastNote.content)
     }
 
     private fun saveNote() {
         val content = noteEditText.text.toString()
-
-        if (content.trim().isEmpty()) {
-            Toast.makeText(this, "Нельзя сохранить пустую заметку", Toast.LENGTH_SHORT).show()
+        if (content.isBlank()) {
+            showMessage("Нельзя сохранить пустую заметку")
             return
         }
 
-        if (currentNoteId == -1) {
-            val newNoteId = noteDao.insertNote(userId, content)
+        if (currentNoteId <= 0) {
+            insertNewNote(content)
+            return
+        }
 
-            if (newNoteId == -1L) {
-                Toast.makeText(this, "Не удалось сохранить заметку", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            currentNoteId = newNoteId.toInt()
-            Toast.makeText(this, "Заметка сохранена", Toast.LENGTH_SHORT).show()
+        val updated = noteDao.updateNote(userId, currentNoteId, content)
+        if (updated) {
+            showMessage("Заметка обновлена")
         } else {
-            val updated = noteDao.updateNote(currentNoteId, content)
+            // Если запись была удалена, сохраняем текст как новую заметку.
+            insertNewNote(content)
+        }
+    }
 
-            if (updated) {
-                Toast.makeText(this, "Заметка обновлена", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Не удалось обновить заметку", Toast.LENGTH_SHORT).show()
-            }
+    private fun insertNewNote(content: String) {
+        val newNoteId = noteDao.insertNote(userId, content)
+        if (newNoteId > 0L) {
+            currentNoteId = newNoteId.toInt()
+            showMessage("Заметка сохранена")
+        } else {
+            showMessage("Не удалось сохранить заметку")
+        }
+    }
+
+    private fun openFileManager() {
+        val intent = Intent(this, FileManagerActivity::class.java).apply {
+            putExtra(FileManagerActivity.EXTRA_NOTE_CONTENT, noteEditText.text.toString())
+        }
+        startActivityForResult(intent, REQUEST_FILE_MANAGER)
+    }
+
+    @Deprecated("Используется для совместимости с текущей структурой проекта")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode != REQUEST_FILE_MANAGER || resultCode != RESULT_OK || data == null) {
+            return
+        }
+
+        if (data.hasExtra(FileManagerActivity.EXTRA_OPENED_FILE_CONTENT)) {
+            val fileContent = data.getStringExtra(FileManagerActivity.EXTRA_OPENED_FILE_CONTENT)
+                ?: ""
+            val fileName = data.getStringExtra(FileManagerActivity.EXTRA_OPENED_FILE_NAME) ?: ""
+
+            noteEditText.setText(fileContent)
+            noteEditText.setSelection(noteEditText.text.length)
+            showMessage(if (fileName.isBlank()) "Файл открыт" else "Открыт файл $fileName")
         }
     }
 
     private fun logout() {
-        val preferences = getSharedPreferences("notes_preferences", MODE_PRIVATE)
-        preferences.edit().clear().apply()
-        goToLogin()
-    }
+        getSharedPreferences(LoginActivity.PREFERENCES_NAME, MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
 
-    private fun goToLogin() {
         val intent = Intent(this, LoginActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         startActivity(intent)
         finish()
+    }
+
+    private fun showMessage(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt(STATE_NOTE_ID, currentNoteId)
+        outState.putInt(STATE_USER_ID, userId)
+        super.onSaveInstanceState(outState)
     }
 }

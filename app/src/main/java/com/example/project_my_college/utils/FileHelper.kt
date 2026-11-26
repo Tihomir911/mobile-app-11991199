@@ -6,66 +6,88 @@ import java.io.IOException
 
 object FileHelper {
 
-    private fun isValidFileName(filename: String): Boolean {
-        return filename.isNotBlank() &&
-                filename == filename.trim() &&
-                filename != "." &&
-                filename != ".." &&
-                '/' !in filename &&
-                '\\' !in filename &&
-                ':' !in filename &&
-                filename.none { it.isISOControl() }
+    private fun isValidFileName(fileName: String): Boolean {
+        return fileName.isNotBlank() &&
+                fileName == fileName.trim() &&
+                fileName != "." &&
+                fileName != ".." &&
+                '/' !in fileName &&
+                '\\' !in fileName &&
+                ':' !in fileName &&
+                fileName.none { it.isISOControl() }
     }
 
-    private fun getSafeFile(context: Context, filename: String): File? {
-        if (!isValidFileName(filename)) return null
-
-        val directory = context.filesDir.canonicalFile
-        val file = File(directory, filename).canonicalFile
-
-        return if (file.parentFile == directory) file else null
-    }
-
-    fun readFile(context: Context, filename: String): String? {
-        val file = getSafeFile(context, filename) ?: return null
+    /** Возвращает файл только в корневой внутренней папке приложения. */
+    private fun getSafeFile(context: Context, fileName: String): File? {
+        if (!isValidFileName(fileName)) return null
 
         return try {
-            if (!file.isFile) return null
-            file.readText(Charsets.UTF_8)
+            val directory = context.applicationContext.filesDir.canonicalFile
+            val file = File(directory, fileName).canonicalFile
+            if (file.parentFile == directory) file else null
         } catch (e: IOException) {
+            null
+        } catch (e: SecurityException) {
             null
         }
     }
 
-    fun writeFile(
-        context: Context,
-        filename: String,
-        text: String
-    ): Boolean {
-        val file = getSafeFile(context, filename) ?: return false
+    /** Читает UTF-8 файл. null означает, что файл не найден или его не удалось прочитать. */
+    fun readFile(context: Context, fileName: String): String? {
+        val file = getSafeFile(context, fileName) ?: return null
 
         return try {
+            if (!file.isFile || !file.canRead()) return null
+            file.readText(Charsets.UTF_8)
+        } catch (e: IOException) {
+            null
+        } catch (e: SecurityException) {
+            null
+        }
+    }
+
+    /** Записывает текст в файл, заменяя его прежнее содержимое. */
+    fun writeFile(
+        context: Context,
+        fileName: String,
+        text: String
+    ): Boolean {
+        val file = getSafeFile(context, fileName) ?: return false
+
+        return try {
+            if (file.exists() && !file.isFile) return false
             file.writeText(text, Charsets.UTF_8)
             true
         } catch (e: IOException) {
             false
-        }
-    }
-
-    fun createFile(context: Context, filename: String): Boolean {
-        val file = getSafeFile(context, filename) ?: return false
-
-        return try {
-            file.createNewFile()
-        } catch (e: IOException) {
+        } catch (e: SecurityException) {
             false
         }
     }
 
+    /** Создаёт пустой файл и не перезаписывает уже существующий. */
+    fun createFile(context: Context, fileName: String): Boolean {
+        val file = getSafeFile(context, fileName) ?: return false
+
+        return try {
+            if (file.exists()) return false
+            file.createNewFile()
+        } catch (e: IOException) {
+            false
+        } catch (e: SecurityException) {
+            false
+        }
+    }
+
+    /** Возвращает список обычных текстовых файлов во внутренней папке приложения. */
     fun getFiles(context: Context): List<String> {
         return try {
-            context.filesDir.listFiles()
-                ?.filter { it.isFile && it.name.endsWith(".txt", ignoreCase = true) }
+            context.applicationContext.filesDir.listFiles()
+                ?.filter { file ->
+                    file.isFile &&
+                            file.name.endsWith(".txt", ignoreCase = true) &&
+                            getSafeFile(context, file.name) != null
+                }
                 ?.map { it.name }
                 ?.sortedBy { it.lowercase() }
                 ?: emptyList()
@@ -74,8 +96,8 @@ object FileHelper {
         }
     }
 
-    fun deleteFile(context: Context, filename: String): Boolean {
-        val file = getSafeFile(context, filename) ?: return false
+    fun deleteFile(context: Context, fileName: String): Boolean {
+        val file = getSafeFile(context, fileName) ?: return false
 
         return try {
             file.isFile && file.delete()

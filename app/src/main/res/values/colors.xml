@@ -1,9 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#F6F8F6</color>
+
+    <!-- Основные цвета -->
+    <color name="background">#F4F6F4</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#EEF2EF</color>
+
+    <!-- Зелёная палитра -->
     <color name="primary">#4E7C5B</color>
     <color name="primary_dark">#34583E</color>
+    <color name="primary_tint">#DCE9DF</color>
+
+    <!-- Текст -->
     <color name="text_primary">#202820</color>
-    <color name="text_secondary">#687568</color>
+    <color name="text_secondary">#7A857D</color>
+
+    <!-- Поля и границы -->
+    <color name="input_background">#F8FAF8</color>
+    <color name="border">#E0E6E1</color>
+
+    <!-- Кнопки -->
+    <color name="button_text">#FFFFFF</color>
+
+    <!-- Дополнительные -->
     <color name="white">#FFFFFF</color>
+
 </resources>
